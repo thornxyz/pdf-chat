@@ -1,19 +1,57 @@
 import { useRef, useState } from "react";
 import { CiCirclePlus, CiFileOn } from "react-icons/ci";
+import axios from "axios";
 
-function Header() {
+interface HeaderProps {
+  onFileUpload: (fileName: string | null) => void;
+}
+
+function Header({ onFileUpload }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleButtonClick = () => {
-    fileInputRef.current?.click(); // Programmatically open the file picker
+    fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file && file.type === "application/pdf") {
-      setUploadedFileName(file.name);
-      // Here you can also trigger an upload if needed
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await axios.post(
+          "http://localhost:8000/upload/",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        if (response.data.filename) {
+          setUploadedFileName(response.data.filename);
+          onFileUpload(response.data.filename);
+        } else {
+          throw new Error("No filename in response");
+        }
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        setUploadedFileName(null);
+        onFileUpload(null);
+        alert("Failed to upload PDF file!");
+      } finally {
+        setIsUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""; // Reset file input
+        }
+      }
     } else {
       alert("Please upload a valid PDF file!");
     }
@@ -32,10 +70,11 @@ function Header() {
         )}
         <button
           onClick={handleButtonClick}
-          className="cursor-pointer border-2 py-1 px-8 rounded-xl text-sm flex gap-3 items-center font-semibold"
+          disabled={isUploading}
+          className="cursor-pointer border-2 py-1 px-8 rounded-xl text-sm flex gap-3 items-center font-semibold disabled:opacity-50"
         >
           <CiCirclePlus size={20} />
-          Upload PDF
+          {isUploading ? "Uploading..." : "Upload PDF"}
         </button>
 
         <input
