@@ -1,5 +1,13 @@
+import Chat from "./components/chat";
+import Header from "./components/header";
+
 function App() {
-  return <div className="font-bold text-2xl">Hello</div>;
+  return (
+    <div>
+      <Header />
+      <Chat />
+    </div>
+  );
 }
 
 export default App;
