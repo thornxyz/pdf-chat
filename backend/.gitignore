@@ -1,0 +1,6 @@
+.env
+venv
+vectorstores/*
+pdfs/*
+chats/*
+__pycache__
