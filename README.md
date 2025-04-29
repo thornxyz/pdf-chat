@@ -51,6 +51,15 @@ A full-stack application that allows users to upload PDF documents and ask quest
    uvicorn api:app --reload
    ```
 
+### Environment Setup
+
+1. Create a `.env` file in the `backend` directory.
+2. Add your Google API key to the `.env` file:
+   ```env
+   GOOGLE_API_KEY=your_google_api_key_here
+   ```
+3. Ensure the `.env` file is in the same directory as the `main.py` file.
+
 ### Frontend Setup
 
 1. Navigate to the `frontend` directory:
