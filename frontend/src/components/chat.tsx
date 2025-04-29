@@ -57,34 +57,35 @@ function Chat({ currentPdfName }: ChatProps) {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[87vh]">
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+    <div className="flex text-sm md:text-base items-center flex-col h-[87vh]">
+      <div className="w-screen flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.map((msg, index) => (
-          <div key={index} className="flex items-start gap-4">
+          <div key={index} className="flex items-start gap-4 px-1 sm:px-6">
             {msg.sender === "user" ? (
-              <div className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-300 text-white font-bold">
-                U
-              </div>
+              <>
+                <img src="/user.svg" />
+                <div className="font-semibold mt-2 text-gray-800">
+                  {msg.text}
+                </div>
+              </>
             ) : (
-              <div className="w-8 h-8 flex items-center justify-center rounded-full bg-green-100">
-                <span className="text-green-500 font-bold">AI</span>
-              </div>
+              <>
+                <img src="/ai.svg" />
+                <div className=" text-gray-800">{msg.text}</div>
+              </>
             )}
-            <div className="max-w-2xl text-gray-800">{msg.text}</div>
           </div>
         ))}
         {isLoading && (
-          <div className="flex items-start gap-4">
-            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-green-100">
-              <span className="text-green-500 font-bold">AI</span>
-            </div>
-            <div className="max-w-2xl text-gray-800">Thinking...</div>
+          <div className="flex items-start gap-4 px-1 sm:px-6">
+            <img src="/ai.svg" />
+            <div className=" text-gray-800">Thinking...</div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4">
+      <div className="w-full p-4">
         <div className="flex items-center bg-white rounded-sm drop-shadow-sm mx-8 px-5 py-4">
           <input
             type="text"

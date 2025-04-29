@@ -10,7 +10,14 @@ from datetime import datetime
 from typing import Dict, List
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load environment variables
+if not load_dotenv():
+    raise EnvironmentError(
+        "Failed to load .env file. Make sure it exists and contains GOOGLE_API_KEY"
+    )
+
+if "GOOGLE_API_KEY" not in os.environ:
+    raise EnvironmentError("GOOGLE_API_KEY not found in environment variables")
 
 PDFS_DIR = "pdfs/"
 VECTORSTORES_DIR = "vectorstores/"
@@ -19,15 +26,17 @@ CHATS_DIR = "chats/"
 for directory in [PDFS_DIR, VECTORSTORES_DIR, CHATS_DIR]:
     os.makedirs(directory, exist_ok=True)
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
-
-model = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
-)
+try:
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
+    model = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        temperature=0,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
+    )
+except Exception as e:
+    raise RuntimeError(f"Failed to initialize Google Gemini API: {str(e)}")
 
 template = """
 You are an assistant that answers questions. Using the following retrieved information, answer the user question. If you don't know the answer, say that you don't know. Keep the answer as short as possible.
@@ -74,52 +83,91 @@ def load_chat_history(pdf_name: str) -> List[Dict]:
 
 
 def get_available_documents() -> List[str]:
-    return [f for f in os.listdir(PDFS_DIR) if f.endswith(".pdf")]
+    try:
+        return [f for f in os.listdir(PDFS_DIR) if f.endswith(".pdf")]
+    except Exception as e:
+        print(f"Error listing documents: {e}")
+        return []
 
 
 def load_pdf_with_pymupdf(file_path):
-    doc = fitz.open(file_path)
-    documents = []
-    for i, page in enumerate(doc):
-        text = page.get_text()
-        if text.strip():
-            documents.append(Document(page_content=text, metadata={"page": i}))
-    return documents
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"PDF file not found: {file_path}")
+
+    try:
+        doc = fitz.open(file_path)
+        documents = []
+        for i, page in enumerate(doc):
+            try:
+                text = page.get_text()
+                if text.strip():
+                    documents.append(Document(page_content=text, metadata={"page": i}))
+            except Exception as e:
+                print(f"Error extracting text from page {i}: {e}")
+        return documents
+    except Exception as e:
+        raise RuntimeError(f"Failed to open or process PDF file: {str(e)}")
+    finally:
+        if "doc" in locals():
+            doc.close()
 
 
 def process_pdf(file_name: str) -> FAISS:
     pdf_path = os.path.join(PDFS_DIR, file_name)
     vectorstore_path = get_vectorstore_path(file_name)
-    if os.path.exists(vectorstore_path):
-        return FAISS.load_local(
-            vectorstore_path, embeddings, allow_dangerous_deserialization=True
+
+    try:
+        if os.path.exists(vectorstore_path):
+            return FAISS.load_local(
+                vectorstore_path, embeddings, allow_dangerous_deserialization=True
+            )
+
+        documents = load_pdf_with_pymupdf(pdf_path)
+        if not documents:
+            raise ValueError("No text content could be extracted from the PDF")
+
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=2000, chunk_overlap=300, add_start_index=True
         )
-    documents = load_pdf_with_pymupdf(pdf_path)
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000, chunk_overlap=300, add_start_index=True
-    )
-    chunked_docs = text_splitter.split_documents(documents)
-    db = FAISS.from_documents(chunked_docs, embeddings)
-    db.save_local(vectorstore_path)
-    return db
+        chunked_docs = text_splitter.split_documents(documents)
 
+        if not chunked_docs:
+            raise ValueError("No text chunks were generated from the PDF")
 
-def upload_pdf(file):
-    file_path = os.path.join(PDFS_DIR, file.name)
-    with open(file_path, "wb") as f:
-        f.write(file.getbuffer())
-    return process_pdf(file.name)
+        db = FAISS.from_documents(chunked_docs, embeddings)
+        db.save_local(vectorstore_path)
+        return db
+    except Exception as e:
+        # Clean up any partially created vectorstore
+        if os.path.exists(vectorstore_path):
+            import shutil
+
+            shutil.rmtree(vectorstore_path)
+        raise RuntimeError(f"Failed to process PDF: {str(e)}")
 
 
 def retrieve_docs(db, query, k=4):
-    return db.similarity_search(query, k)
+    if not db:
+        raise ValueError("Vector store is not initialized")
+    try:
+        return db.similarity_search(query, k)
+    except Exception as e:
+        raise RuntimeError(f"Error searching for similar documents: {str(e)}")
 
 
 def question_pdf(question: str, documents, pdf_name: str) -> str:
-    context = "\n\n".join([doc.page_content for doc in documents])
-    prompt = ChatPromptTemplate.from_template(template)
-    chain = prompt | model
-    answer = chain.invoke({"question": question, "context": context})
-    answer_text = str(answer.content) if hasattr(answer, "content") else str(answer)
-    save_chat_history(pdf_name, question, answer_text)
-    return answer_text
+    if not documents:
+        return "I couldn't find any relevant information in the PDF to answer your question."
+
+    try:
+        context = "\n\n".join([doc.page_content for doc in documents])
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = prompt | model
+        answer = chain.invoke({"question": question, "context": context})
+        answer_text = str(answer.content) if hasattr(answer, "content") else str(answer)
+        save_chat_history(pdf_name, question, answer_text)
+        return answer_text
+    except Exception as e:
+        error_msg = f"Error generating answer: {str(e)}"
+        print(error_msg)
+        return "I encountered an error while trying to answer your question. Please try again."

@@ -1,14 +1,19 @@
 import { useRef, useState } from "react";
-import { CiCirclePlus, CiFileOn } from "react-icons/ci";
+import { CiCirclePlus } from "react-icons/ci";
 import axios from "axios";
 
 interface HeaderProps {
   onFileUpload: (fileName: string | null) => void;
+  availableDocuments: string[];
+  currentPdfName: string | null;
 }
 
-function Header({ onFileUpload }: HeaderProps) {
+function Header({
+  onFileUpload,
+  availableDocuments,
+  currentPdfName,
+}: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleButtonClick = () => {
@@ -36,20 +41,18 @@ function Header({ onFileUpload }: HeaderProps) {
         );
 
         if (response.data.filename) {
-          setUploadedFileName(response.data.filename);
           onFileUpload(response.data.filename);
         } else {
           throw new Error("No filename in response");
         }
       } catch (error) {
         console.error("Error uploading file:", error);
-        setUploadedFileName(null);
         onFileUpload(null);
         alert("Failed to upload PDF file!");
       } finally {
         setIsUploading(false);
         if (fileInputRef.current) {
-          fileInputRef.current.value = ""; // Reset file input
+          fileInputRef.current.value = "";
         }
       }
     } else {
@@ -57,24 +60,54 @@ function Header({ onFileUpload }: HeaderProps) {
     }
   };
 
+  const handleDocumentSelect = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const selectedDoc = event.target.value;
+    if (selectedDoc) {
+      onFileUpload(selectedDoc);
+    } else {
+      onFileUpload(null);
+    }
+  };
+
   return (
     <div className="px-6 py-4 shadow-lg flex justify-between items-center">
-      <div>Logo</div>
+      <img src="/Logo.svg" />
 
-      <div className="flex items-center gap-8">
-        {uploadedFileName && (
-          <div className="flex gap-2 items-center text-green-600">
-            <CiFileOn className="w-5 h-5" />
-            <span className="text-sm ">{uploadedFileName}</span>
-          </div>
-        )}
+      <div className="flex items-center gap-2 md:gap-8">
+        <div className="w-full sm:w-auto max-w-xs">
+          <select
+            value={currentPdfName || ""}
+            onChange={handleDocumentSelect}
+            className="w-[100px] sm:w-full border-[1px] border-green-500 text-green-600 rounded-lg p-2 text-xs md:text-sm outline-none "
+          >
+            <option value="" className="text-black">
+              📄 Select document
+            </option>
+            {availableDocuments.map((doc) => (
+              <option
+                key={doc}
+                value={doc}
+                className={
+                  doc === currentPdfName ? "text-green-600" : "text-black"
+                }
+              >
+                {doc}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <button
           onClick={handleButtonClick}
           disabled={isUploading}
-          className="cursor-pointer border-2 py-1 px-8 rounded-xl text-sm flex gap-3 items-center font-semibold disabled:opacity-50"
+          className="cursor-pointer border-2 py-1 px-1 sm:px-8 rounded-full sm:rounded-xl text-sm flex gap-2 sm:gap-3 items-center font-semibold disabled:opacity-50"
         >
           <CiCirclePlus size={20} />
-          {isUploading ? "Uploading..." : "Upload PDF"}
+          <span className="hidden sm:inline">
+            {isUploading ? "Uploading..." : "Upload PDF"}
+          </span>
         </button>
 
         <input
