@@ -75,7 +75,7 @@ function Header({
     <div className="px-6 py-4 shadow-lg flex justify-between items-center">
       <img src="/Logo.svg" />
 
-      <div className="flex items-center gap-2 md:gap-8">
+      <div className="flex items-center gap-3 md:gap-8">
         <div className="w-full sm:w-auto max-w-xs">
           <select
             value={currentPdfName || ""}
@@ -102,7 +102,7 @@ function Header({
         <button
           onClick={handleButtonClick}
           disabled={isUploading}
-          className="cursor-pointer border-2 py-1 px-1 sm:px-8 rounded-full sm:rounded-xl text-sm flex gap-2 sm:gap-3 items-center font-semibold disabled:opacity-50"
+          className="cursor-pointer border-2 p-1 sm:py-2 sm:px-8 rounded-full sm:rounded-xl text-sm flex gap-3 items-center font-semibold disabled:opacity-50"
         >
           <CiCirclePlus size={20} />
           <span className="hidden sm:inline">

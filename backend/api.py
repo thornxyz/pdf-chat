@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import main
 import os
-from typing import List
+from typing import List, Dict
 import traceback
 
 app = FastAPI(title="PDF Question Answering API")
@@ -96,6 +96,16 @@ async def ask_question(query: Question):
 @app.get("/documents/")
 async def list_documents() -> List[str]:
     return main.get_available_documents()
+
+
+@app.get("/chat-history/{pdf_name}")
+async def get_chat_history(pdf_name: str) -> List[Dict]:
+    try:
+        if not os.path.exists(os.path.join(main.PDFS_DIR, pdf_name)):
+            raise HTTPException(status_code=404, detail=f"PDF {pdf_name} not found")
+        return main.load_chat_history(pdf_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

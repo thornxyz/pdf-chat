@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { IoMdSend } from "react-icons/io";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   sender: "user" | "bot";
@@ -16,6 +17,35 @@ function Chat({ currentPdfName }: ChatProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Load chat history when PDF changes
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!currentPdfName) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          `http://localhost:8000/chat-history/${currentPdfName}`
+        );
+        const history = response.data;
+        const formattedMessages = history
+          .map((entry: { question: string; answer: string }) => [
+            { sender: "user" as const, text: entry.question },
+            { sender: "bot" as const, text: entry.answer },
+          ])
+          .flat();
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+        setMessages([]);
+      }
+    };
+
+    loadChatHistory();
+  }, [currentPdfName]);
 
   const handleSend = async () => {
     if (!input.trim() || !currentPdfName) return;
@@ -71,7 +101,9 @@ function Chat({ currentPdfName }: ChatProps) {
             ) : (
               <>
                 <img src="/ai.svg" />
-                <div className=" text-gray-800">{msg.text}</div>
+                <div className="text-gray-800 prose prose-sm sm:prose lg:prose-base max-w-none">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                </div>
               </>
             )}
           </div>

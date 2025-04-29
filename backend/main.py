@@ -39,10 +39,10 @@ except Exception as e:
     raise RuntimeError(f"Failed to initialize Google Gemini API: {str(e)}")
 
 template = """
-You are an assistant that answers questions. Using the following retrieved information, answer the user question. If you don't know the answer, say that you don't know. Keep the answer as short as possible.
-Question: {question} 
-Context: {context} 
-Answer:
+You are an assistant that answers questions in **Markdown format**. Using the following retrieved information, answer the user question. If you don't know the answer, say that you don't know. Keep the answer as concise and well-formatted as possible using Markdown.
+Question: {question}
+Context: {context}
+Answer (in Markdown):
 """
 
 
