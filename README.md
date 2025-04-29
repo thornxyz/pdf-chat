@@ -1,11 +1,5 @@
 A full-stack application that allows users to upload PDF documents and ask questions about their content. The backend processes the documents using Natural Language Processing (NLP) to answer the questions, and the frontend provides an intuitive interface for users to interact with the system.
 
-## Features
-
-- **PDF Upload**: Users can upload PDF documents.
-- **Question Answering**: Users can ask questions about the content of the uploaded PDFs.
-- **Chat History**: The application maintains a history of questions and answers for each document.
-
 ## Technologies Used
 
 ### Backend
@@ -161,3 +155,139 @@ The backend server runs at `http://localhost:8000`.
   - `200 OK`: JSON array of chat history entries.
   - `404 Not Found`: If the specified PDF is not found.
   - `500 Internal Server Error`: If there is an error retrieving the chat history.
+
+## High-Level Design (HLD)
+
+The application is a full-stack system designed to process and interact with PDF documents. It consists of two main components: the backend and the frontend. Below is an overview of the architecture:
+
+### Backend
+
+- **PDF Processing**: Handles the upload and parsing of PDF documents. Extracts text and generates embeddings using Google Generative AI.
+- **Question Answering**: Uses LangChain and FAISS to retrieve relevant content and answer user queries.
+- **Database Management**: Stores metadata about uploaded PDFs and chat history in SQLite.
+- **API Layer**: Exposes RESTful endpoints for the frontend to interact with the backend.
+
+### Frontend
+
+- **User Interface**: Built with React.js and styled using TailwindCSS. Provides an intuitive interface for uploading PDFs, asking questions, and viewing chat history.
+- **State Management**: Manages application state using React hooks.
+- **API Integration**: Communicates with the backend using Axios to fetch and display data.
+
+### Interaction Flow
+
+1. User uploads a PDF via the frontend.
+2. The backend processes the PDF, extracts text, and stores embeddings in FAISS.
+3. User submits a question about the PDF.
+4. The backend retrieves relevant content and generates an answer.
+5. The frontend displays the answer and updates the chat history.
+
+## Low-Level Design (LLD)
+
+### Backend
+
+#### Key Components
+
+1. **API Endpoints**:
+
+   - `/upload/`: Handles PDF uploads.
+   - `/ask/`: Processes user questions and returns answers.
+   - `/documents/`: Lists all uploaded PDFs.
+   - `/chat-history/{pdf_name}`: Retrieves chat history for a specific PDF.
+
+2. **PDF Processing**:
+
+   - Extracts text using PyMuPDF.
+   - Generates embeddings using Google Generative AI.
+
+3. **Database**:
+
+   - SQLite database with `documents` and `chats` tables.
+
+4. **Vector Store**:
+   - FAISS for storing and querying embeddings.
+
+#### Interactions
+
+- **PDF Upload**: Validates file type, extracts text, generates embeddings, and stores metadata.
+- **Question Answering**: Retrieves relevant embeddings, generates a response, and logs the interaction.
+
+### Frontend
+
+#### Key Components
+
+1. **Components**:
+
+   - `App.tsx`: Main application component.
+   - `chat.tsx`: Displays chat history and input field for questions.
+   - `header.tsx`: Displays the application header.
+
+2. **Pages**:
+
+   - `index.html`: Entry point for the application.
+
+3. **API Integration**:
+
+   - Uses Axios to interact with backend endpoints.
+
+4. **Styling**:
+   - TailwindCSS for responsive and modern UI design.
+
+#### Interactions
+
+- **PDF Upload**: Sends the file to the backend and updates the document list.
+- **Question Submission**: Sends the question to the backend and updates the chat history.
+
+## Complete Source Code Documentation
+
+### Backend
+
+- **`api.py`**:
+
+  - Defines all API endpoints.
+  - Handles PDF uploads, question answering, and chat history retrieval.
+
+- **`main.py`**:
+
+  - Entry point for the backend application.
+  - Initializes the FastAPI app and database.
+
+- **`database.db`**:
+
+  - SQLite database file for storing metadata and chat history.
+
+- **`vectorstores/`**:
+  - Stores FAISS index files for embeddings.
+
+### Frontend
+
+- **`src/`**:
+
+  - Contains all React components and application logic.
+
+- **`components/`**:
+
+  - `chat.tsx`: Manages chat interactions.
+  - `header.tsx`: Displays the application header.
+
+- **`public/`**:
+
+  - Contains static assets like images and icons.
+
+- **`vite.config.ts`**:
+  - Configuration file for the Vite build tool.
+
+### Key Interactions
+
+1. **PDF Upload**:
+
+   - Frontend sends the file to `/upload/`.
+   - Backend processes the file and updates the database.
+
+2. **Question Answering**:
+
+   - Frontend sends a question to `/ask/`.
+   - Backend retrieves relevant content and generates an answer.
+
+3. **Chat History**:
+   - Frontend fetches chat history from `/chat-history/{pdf_name}`.
+   - Backend retrieves and returns the chat history from the database.
