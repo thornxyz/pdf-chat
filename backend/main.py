@@ -5,25 +5,58 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 import os
-import json
 from datetime import datetime
 from typing import Dict, List
 from dotenv import load_dotenv
+import sqlite3
 
-# Load environment variables
-if not load_dotenv():
-    raise EnvironmentError(
-        "Failed to load .env file. Make sure it exists and contains GOOGLE_API_KEY"
+DB_PATH = "database.db"
+
+
+def initialize_database():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            upload_time TEXT NOT NULL,
+            user_id TEXT
+        )
+        """
     )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            document_id INTEGER NOT NULL,
+            timestamp TEXT NOT NULL,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES documents (id)
+        )
+        """
+    )
+
+    conn.commit()
+    conn.close()
+
+
+initialize_database()
+
+if not load_dotenv():
+    raise EnvironmentError("Failed to load .env file.")
 
 if "GOOGLE_API_KEY" not in os.environ:
     raise EnvironmentError("GOOGLE_API_KEY not found in environment variables")
 
 PDFS_DIR = "pdfs/"
 VECTORSTORES_DIR = "vectorstores/"
-CHATS_DIR = "chats/"
 
-for directory in [PDFS_DIR, VECTORSTORES_DIR, CHATS_DIR]:
+for directory in [PDFS_DIR, VECTORSTORES_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 try:
@@ -51,35 +84,56 @@ def get_vectorstore_path(pdf_name: str) -> str:
     return os.path.join(VECTORSTORES_DIR, f"{base_name}.faiss")
 
 
-def get_chat_history_path(pdf_name: str) -> str:
-    base_name = os.path.splitext(pdf_name)[0]
-    return os.path.join(CHATS_DIR, f"{base_name}.json")
-
-
 def save_chat_history(pdf_name: str, question: str, answer: str):
-    chat_file = get_chat_history_path(pdf_name)
-    chat_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "question": question,
-        "answer": answer,
-    }
-    try:
-        with open(chat_file, "r") as f:
-            history = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        history = []
-    history.append(chat_entry)
-    with open(chat_file, "w") as f:
-        json.dump(history, f, indent=2)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM documents WHERE filename = ?", (pdf_name,))
+    document = cursor.fetchone()
+    if not document:
+        raise ValueError(f"Document {pdf_name} not found in the database")
+
+    document_id = document[0]
+
+    cursor.execute(
+        """
+        INSERT INTO chats (document_id, timestamp, question, answer)
+        VALUES (?, datetime('now'), ?, ?)
+        """,
+        (document_id, question, answer),
+    )
+
+    conn.commit()
+    conn.close()
 
 
 def load_chat_history(pdf_name: str) -> List[Dict]:
-    chat_file = get_chat_history_path(pdf_name)
-    try:
-        with open(chat_file, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM documents WHERE filename = ?", (pdf_name,))
+    document = cursor.fetchone()
+    if not document:
         return []
+
+    document_id = document[0]
+
+    cursor.execute(
+        """
+        SELECT timestamp, question, answer FROM chats
+        WHERE document_id = ?
+        ORDER BY timestamp ASC
+        """,
+        (document_id,),
+    )
+
+    chats = [
+        {"timestamp": row[0], "question": row[1], "answer": row[2]}
+        for row in cursor.fetchall()
+    ]
+
+    conn.close()
+    return chats
 
 
 def get_available_documents() -> List[str]:
@@ -138,7 +192,6 @@ def process_pdf(file_name: str) -> FAISS:
         db.save_local(vectorstore_path)
         return db
     except Exception as e:
-        # Clean up any partially created vectorstore
         if os.path.exists(vectorstore_path):
             import shutil
 

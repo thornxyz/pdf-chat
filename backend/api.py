@@ -6,13 +6,13 @@ import main
 import os
 from typing import List, Dict
 import traceback
+import sqlite3
 
-app = FastAPI(title="PDF Question Answering API")
+app = FastAPI(title="PDF-Chat API")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite's default development port
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,22 +33,31 @@ async def upload_pdf(file: UploadFile = File(...)):
         file_path = os.path.join(main.PDFS_DIR, file.filename)
         content = await file.read()
 
-        # Write the file in a try block to ensure cleanup on failure
         try:
             with open(file_path, "wb") as pdf_file:
                 pdf_file.write(content)
         except Exception as e:
-            # Clean up the file if writing fails
             if os.path.exists(file_path):
                 os.remove(file_path)
             raise HTTPException(
                 status_code=500, detail=f"Failed to save PDF file: {str(e)}"
             )
 
+        conn = sqlite3.connect(main.DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO documents (filename, upload_time, user_id)
+            VALUES (?, datetime('now'), NULL)
+            """,
+            (file.filename,),
+        )
+        conn.commit()
+        conn.close()
+
         try:
             vectorstore = main.process_pdf(file.filename)
         except Exception as e:
-            # Clean up the file if processing fails
             if os.path.exists(file_path):
                 os.remove(file_path)
             raise HTTPException(
@@ -62,7 +71,6 @@ async def upload_pdf(file: UploadFile = File(...)):
             }
         )
     except Exception as e:
-        # Log the full error for debugging
         print("Error during PDF upload:", traceback.format_exc())
         if isinstance(e, HTTPException):
             raise e
@@ -95,14 +103,17 @@ async def ask_question(query: Question):
 
 @app.get("/documents/")
 async def list_documents() -> List[str]:
-    return main.get_available_documents()
+    conn = sqlite3.connect(main.DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT filename FROM documents")
+    documents = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return documents
 
 
 @app.get("/chat-history/{pdf_name}")
 async def get_chat_history(pdf_name: str) -> List[Dict]:
     try:
-        if not os.path.exists(os.path.join(main.PDFS_DIR, pdf_name)):
-            raise HTTPException(status_code=404, detail=f"PDF {pdf_name} not found")
         return main.load_chat_history(pdf_name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

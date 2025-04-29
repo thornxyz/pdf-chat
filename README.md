@@ -12,7 +12,7 @@ A full-stack application that allows users to upload PDF documents and ask quest
 
 - **Framework**: FastAPI
 - **Libraries**: LangChain, PyMuPDF, FAISS
-- **Database**: Local storage for PDFs, chats, and vector databases
+- **Database**: SQLite for storing document metadata and chat history, FAISS for vector database storage. PDFs are stored on disk.
 - **Other**: Google Generative AI for embeddings and NLP
 
 ### Frontend
@@ -58,7 +58,7 @@ A full-stack application that allows users to upload PDF documents and ask quest
    ```env
    GOOGLE_API_KEY=your_google_api_key_here
    ```
-3. Ensure the `.env` file is in the same directory as the `main.py` file.
+   > **Note**: The `.env` file is crucial for the application to function correctly. Ensure it is in the same directory as the `main.py` file and contains all required environment variables.
 
 ### Frontend Setup
 
@@ -74,6 +74,29 @@ A full-stack application that allows users to upload PDF documents and ask quest
    ```bash
    npm run dev
    ```
+   > **Note**: The frontend will be accessible at `http://localhost:5173` by default.
+
+## Database Setup
+
+The application uses SQLite for storing document metadata and chat history. The database is automatically initialized when the backend starts.
+
+### Database Schema
+
+- **`documents` Table**:
+
+  - `id` (INTEGER): Primary key.
+  - `filename` (TEXT): Name of the uploaded PDF file.
+  - `upload_time` (TEXT): Timestamp of when the file was uploaded.
+  - `user_id` (TEXT): (Optional) ID of the user who uploaded the file.
+
+- **`chats` Table**:
+  - `id` (INTEGER): Primary key.
+  - `document_id` (INTEGER): Foreign key referencing the `documents` table.
+  - `timestamp` (TEXT): Timestamp of the chat entry.
+  - `question` (TEXT): The question asked by the user.
+  - `answer` (TEXT): The answer provided by the system.
+
+The database file is named `database.db` and is located in the `backend` directory. No manual setup is required; it will be created and initialized automatically when the backend server starts.
 
 ## Usage
 
