@@ -93,14 +93,14 @@ function Chat({ currentPdfName }: ChatProps) {
           <div key={index} className="flex items-start gap-4 px-1 sm:px-6">
             {msg.sender === "user" ? (
               <>
-                <img src="/user.svg" />
+                <img src="/user.svg" className="mt-2" width={25} />
                 <div className="font-semibold mt-2 text-gray-800">
                   {msg.text}
                 </div>
               </>
             ) : (
               <>
-                <img src="/ai.svg" />
+                <img src="/vite.svg" width={25} />
                 <div className="text-gray-800 prose prose-sm sm:prose lg:prose-base max-w-none">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
@@ -110,7 +110,7 @@ function Chat({ currentPdfName }: ChatProps) {
         ))}
         {isLoading && (
           <div className="flex items-start gap-4 px-1 sm:px-6">
-            <img src="/ai.svg" />
+            <img src="/vite.svg" />
             <div className=" text-gray-800">Thinking...</div>
           </div>
         )}

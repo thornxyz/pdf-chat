@@ -73,7 +73,7 @@ function Header({
 
   return (
     <div className="px-6 py-4 shadow-lg flex justify-between items-center">
-      <img src="/Logo.svg" />
+      <img src="/Logo.svg" width={100} />
 
       <div className="flex items-center gap-3 md:gap-8">
         <div className="w-full sm:w-auto max-w-xs">

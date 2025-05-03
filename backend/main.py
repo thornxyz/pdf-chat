@@ -5,7 +5,6 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 import os
-from datetime import datetime
 from typing import Dict, List
 from dotenv import load_dotenv
 import sqlite3
