@@ -4,7 +4,9 @@ import Chat from "./components/chat";
 import Header from "./components/header";
 
 function App() {
-  const [currentPdfName, setCurrentPdfName] = useState<string | null>(null);
+  const [currentPdfName, setCurrentPdfName] = useState<string | null>(
+    localStorage.getItem("currentPdfName")
+  );
   const [availableDocuments, setAvailableDocuments] = useState<string[]>([]);
 
   useEffect(() => {
@@ -18,10 +20,18 @@ function App() {
     };
 
     fetchDocuments();
-  }, [currentPdfName]); // Refetch when a new document is uploaded
+  }, []);
+
+  useEffect(() => {
+    if (currentPdfName) {
+      localStorage.setItem("currentPdfName", currentPdfName);
+    } else {
+      localStorage.removeItem("currentPdfName");
+    }
+  }, [currentPdfName]);
 
   return (
-    <div>
+    <div className="bg-gray-100 min-h-screen flex flex-col">
       <Header
         onFileUpload={setCurrentPdfName}
         availableDocuments={availableDocuments}

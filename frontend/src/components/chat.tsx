@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 interface Message {
   sender: "user" | "bot";
   text: string;
+  timestamp: string;
 }
 
 interface ChatProps {
@@ -18,7 +19,6 @@ function Chat({ currentPdfName }: ChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Load chat history when PDF changes
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!currentPdfName) {
@@ -32,10 +32,24 @@ function Chat({ currentPdfName }: ChatProps) {
         );
         const history = response.data;
         const formattedMessages = history
-          .map((entry: { question: string; answer: string }) => [
-            { sender: "user" as const, text: entry.question },
-            { sender: "bot" as const, text: entry.answer },
-          ])
+          .map(
+            (entry: {
+              question: string;
+              answer: string;
+              timestamp: string;
+            }) => [
+              {
+                sender: "user" as const,
+                text: entry.question,
+                timestamp: entry.timestamp,
+              },
+              {
+                sender: "bot" as const,
+                text: entry.answer,
+                timestamp: entry.timestamp,
+              },
+            ]
+          )
           .flat();
         setMessages(formattedMessages);
       } catch (error) {
@@ -50,7 +64,11 @@ function Chat({ currentPdfName }: ChatProps) {
   const handleSend = async () => {
     if (!input.trim() || !currentPdfName) return;
 
-    const userMessage: Message = { sender: "user", text: input };
+    const userMessage: Message = {
+      sender: "user",
+      text: input,
+      timestamp: new Date().toLocaleString(),
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -61,13 +79,18 @@ function Chat({ currentPdfName }: ChatProps) {
         question: input,
       });
 
-      const botMessage: Message = { sender: "bot", text: response.data.answer };
+      const botMessage: Message = {
+        sender: "bot",
+        text: response.data.answer,
+        timestamp: new Date().toLocaleString(),
+      };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Error asking question:", error);
       const errorMessage: Message = {
         sender: "bot",
         text: "Sorry, I encountered an error while processing your question.",
+        timestamp: new Date().toLocaleString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -90,19 +113,44 @@ function Chat({ currentPdfName }: ChatProps) {
     <div className="flex text-sm md:text-base items-center flex-col h-[87vh]">
       <div className="w-screen flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.map((msg, index) => (
-          <div key={index} className="flex items-start gap-4 px-1 sm:px-6">
+          <div
+            key={index}
+            className="flex items-start gap-1.5 sm:gap-4 px-1 sm:px-6"
+          >
             {msg.sender === "user" ? (
               <>
                 <img src="/user.svg" className="mt-2" width={25} />
                 <div className="font-semibold mt-2 text-gray-800">
                   {msg.text}
+                  <div className="text-xs text-gray-500 self-end">
+                    {new Date(msg.timestamp).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}{" "}
+                    {new Date(msg.timestamp).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
                 </div>
               </>
             ) : (
               <>
                 <img src="/vite.svg" width={25} />
-                <div className="text-gray-800 prose prose-sm sm:prose lg:prose-base max-w-none">
+                <div className="text-gray-950 prose prose-sm sm:prose !max-w-5xl flex flex-col">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  <div className="text-xs text-gray-500 self-end">
+                    {new Date(msg.timestamp).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}{" "}
+                    {new Date(msg.timestamp).toLocaleTimeString(undefined, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
                 </div>
               </>
             )}
@@ -117,8 +165,8 @@ function Chat({ currentPdfName }: ChatProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="w-full p-4">
-        <div className="flex items-center bg-white rounded-sm drop-shadow-sm mx-8 px-5 py-4">
+      <div className="w-full p-1 sm:p-4">
+        <div className="flex items-center bg-white rounded-sm drop-shadow-sm mx-8 py-2 px-3 sm:px-5 sm:py-4">
           <input
             type="text"
             value={input}
