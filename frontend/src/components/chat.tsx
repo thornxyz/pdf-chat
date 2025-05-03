@@ -158,7 +158,7 @@ function Chat({ currentPdfName }: ChatProps) {
         ))}
         {isLoading && (
           <div className="flex items-start gap-4 px-1 sm:px-6">
-            <img src="/vite.svg" />
+            <img src="/vite.svg" width={25} />
             <div className=" text-gray-800">Thinking...</div>
           </div>
         )}
