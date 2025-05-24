@@ -5,71 +5,33 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 import os
-from typing import Dict, List
+from typing import List
+import shutil
 from dotenv import load_dotenv
-import sqlite3
+from database import save_chat_history
 
-DB_PATH = "database.db"
-
-
-def initialize_database():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT NOT NULL,
-            upload_time TEXT NOT NULL,
-            user_id TEXT
-        )
-        """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS chats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            document_id INTEGER NOT NULL,
-            timestamp TEXT NOT NULL,
-            question TEXT NOT NULL,
-            answer TEXT NOT NULL,
-            FOREIGN KEY (document_id) REFERENCES documents (id)
-        )
-        """
-    )
-
-    conn.commit()
-    conn.close()
-
-
-initialize_database()
-
-if not load_dotenv():
-    raise EnvironmentError("Failed to load .env file.")
+# Load environment variables
+load_dotenv()
 
 if "GOOGLE_API_KEY" not in os.environ:
     raise EnvironmentError("GOOGLE_API_KEY not found in environment variables")
 
+# Directory setup
 PDFS_DIR = "pdfs/"
 VECTORSTORES_DIR = "vectorstores/"
 
 for directory in [PDFS_DIR, VECTORSTORES_DIR]:
     os.makedirs(directory, exist_ok=True)
 
+# Initialize Google Gemini API
 try:
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        temperature=0,
-        max_tokens=None,
-        timeout=None,
-        max_retries=2,
-    )
+    model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 except Exception as e:
     raise RuntimeError(f"Failed to initialize Google Gemini API: {str(e)}")
 
+
+# Prompt template for question answering
 template = """
 You are an assistant that answers questions in **Markdown format**. Using the following retrieved information, answer the user question. If you don't know the answer, say that you don't know. Keep the answer as concise and well-formatted as possible using Markdown.
 Question: {question}
@@ -78,63 +40,13 @@ Answer (in Markdown):
 """
 
 
+# Get the path for storing the vector store for a given PDF
 def get_vectorstore_path(pdf_name: str) -> str:
     base_name = os.path.splitext(pdf_name)[0]
     return os.path.join(VECTORSTORES_DIR, f"{base_name}.faiss")
 
 
-def save_chat_history(pdf_name: str, question: str, answer: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id FROM documents WHERE filename = ?", (pdf_name,))
-    document = cursor.fetchone()
-    if not document:
-        raise ValueError(f"Document {pdf_name} not found in the database")
-
-    document_id = document[0]
-
-    cursor.execute(
-        """
-        INSERT INTO chats (document_id, timestamp, question, answer)
-        VALUES (?, datetime('now'), ?, ?)
-        """,
-        (document_id, question, answer),
-    )
-
-    conn.commit()
-    conn.close()
-
-
-def load_chat_history(pdf_name: str) -> List[Dict]:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id FROM documents WHERE filename = ?", (pdf_name,))
-    document = cursor.fetchone()
-    if not document:
-        return []
-
-    document_id = document[0]
-
-    cursor.execute(
-        """
-        SELECT timestamp, question, answer FROM chats
-        WHERE document_id = ?
-        ORDER BY timestamp ASC
-        """,
-        (document_id,),
-    )
-
-    chats = [
-        {"timestamp": row[0], "question": row[1], "answer": row[2]}
-        for row in cursor.fetchall()
-    ]
-
-    conn.close()
-    return chats
-
-
+# Get list of available PDF files in the PDFS_DIR
 def get_available_documents() -> List[str]:
     try:
         return [f for f in os.listdir(PDFS_DIR) if f.endswith(".pdf")]
@@ -143,7 +55,8 @@ def get_available_documents() -> List[str]:
         return []
 
 
-def load_pdf_with_pymupdf(file_path):
+# Load and extract text from PDF using PyMuPDF
+def load_pdf_with_pymupdf(file_path: str) -> List[Document]:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"PDF file not found: {file_path}")
 
@@ -165,20 +78,24 @@ def load_pdf_with_pymupdf(file_path):
             doc.close()
 
 
+# Process a PDF file and create/load its vector store
 def process_pdf(file_name: str) -> FAISS:
     pdf_path = os.path.join(PDFS_DIR, file_name)
     vectorstore_path = get_vectorstore_path(file_name)
 
     try:
+        # Check if vector store already exists
         if os.path.exists(vectorstore_path):
             return FAISS.load_local(
                 vectorstore_path, embeddings, allow_dangerous_deserialization=True
             )
 
+        # Load and process PDF
         documents = load_pdf_with_pymupdf(pdf_path)
         if not documents:
             raise ValueError("No text content could be extracted from the PDF")
 
+        # Split documents into chunks
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=2000, chunk_overlap=300, add_start_index=True
         )
@@ -187,18 +104,19 @@ def process_pdf(file_name: str) -> FAISS:
         if not chunked_docs:
             raise ValueError("No text chunks were generated from the PDF")
 
+        # Create and save vector store
         db = FAISS.from_documents(chunked_docs, embeddings)
         db.save_local(vectorstore_path)
         return db
     except Exception as e:
+        # Clean up on failure
         if os.path.exists(vectorstore_path):
-            import shutil
-
             shutil.rmtree(vectorstore_path)
         raise RuntimeError(f"Failed to process PDF: {str(e)}")
 
 
-def retrieve_docs(db, query, k=4):
+# Retrieve relevant documents from the vector store
+def retrieve_docs(db: FAISS, query: str, k: int = 4) -> List[Document]:
     if not db:
         raise ValueError("Vector store is not initialized")
     try:
@@ -207,19 +125,46 @@ def retrieve_docs(db, query, k=4):
         raise RuntimeError(f"Error searching for similar documents: {str(e)}")
 
 
-def question_pdf(question: str, documents, pdf_name: str) -> str:
+# Generate an answer to a question based on retrieved documents
+def question_pdf(question: str, documents: List[Document], pdf_name: str) -> str:
     if not documents:
         return "I couldn't find any relevant information in the PDF to answer your question."
 
     try:
+        # Combine document content
         context = "\n\n".join([doc.page_content for doc in documents])
+
+        # Create prompt and chain
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | model
+
+        # Generate answer
         answer = chain.invoke({"question": question, "context": context})
         answer_text = str(answer.content) if hasattr(answer, "content") else str(answer)
+
+        # Save to chat history
         save_chat_history(pdf_name, question, answer_text)
+
         return answer_text
     except Exception as e:
         error_msg = f"Error generating answer: {str(e)}"
         print(error_msg)
         return "I encountered an error while trying to answer your question. Please try again."
+
+
+# Delete a PDF file and its associated vector store
+def delete_pdf(pdf_name: str) -> None:
+    pdf_path = os.path.join(PDFS_DIR, pdf_name)
+    vectorstore_path = get_vectorstore_path(pdf_name)
+
+    if os.path.exists(pdf_path):
+        try:
+            os.remove(pdf_path)
+        except Exception as e:
+            print(f"Error deleting PDF file {pdf_path}: {e}")
+
+    if os.path.exists(vectorstore_path):
+        try:
+            shutil.rmtree(vectorstore_path)
+        except Exception as e:
+            print(f"Error deleting vector store {vectorstore_path}: {e}")

@@ -18,7 +18,6 @@ function Chat({ currentPdfName }: ChatProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!currentPdfName) {
@@ -27,34 +26,53 @@ function Chat({ currentPdfName }: ChatProps) {
       }
 
       try {
+        // URL encode the PDF name to handle spaces and special characters
+        const encodedPdfName = encodeURIComponent(currentPdfName);
         const response = await axios.get(
-          `http://localhost:8000/chat-history/${currentPdfName}`
+          `http://localhost:8000/chat-history/${encodedPdfName}`
         );
         const history = response.data;
-        const formattedMessages = history
-          .map(
-            (entry: {
-              question: string;
-              answer: string;
-              timestamp: string;
-            }) => [
-              {
-                sender: "user" as const,
-                text: entry.question,
-                timestamp: entry.timestamp,
-              },
-              {
-                sender: "bot" as const,
-                text: entry.answer,
-                timestamp: entry.timestamp,
-              },
-            ]
-          )
-          .flat();
-        setMessages(formattedMessages);
+
+        if (history.length === 0) {
+          // Show welcome message if no chat history exists
+          const welcomeMessage: Message = {
+            sender: "bot",
+            text: `Hello! I'm ready to help you with **${currentPdfName}**. Feel free to ask me anything about this document - I can answer questions, summarize content, or help you find specific information.`,
+            timestamp: new Date().toLocaleString(),
+          };
+          setMessages([welcomeMessage]);
+        } else {
+          const formattedMessages = history
+            .map(
+              (entry: {
+                question: string;
+                answer: string;
+                timestamp: string;
+              }) => [
+                {
+                  sender: "user" as const,
+                  text: entry.question,
+                  timestamp: entry.timestamp,
+                },
+                {
+                  sender: "bot" as const,
+                  text: entry.answer,
+                  timestamp: entry.timestamp,
+                },
+              ]
+            )
+            .flat();
+          setMessages(formattedMessages);
+        }
       } catch (error) {
         console.error("Error loading chat history:", error);
-        setMessages([]);
+        // Show welcome message if there's an error loading history
+        const welcomeMessage: Message = {
+          sender: "bot",
+          text: `Hello! I'm ready to help you with **${currentPdfName}**. Feel free to ask me anything about this document - I can answer questions, summarize content, or help you find specific information.`,
+          timestamp: new Date().toLocaleString(),
+        };
+        setMessages([welcomeMessage]);
       }
     };
 
@@ -72,7 +90,6 @@ function Chat({ currentPdfName }: ChatProps) {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-
     try {
       const response = await axios.post("http://localhost:8000/ask/", {
         pdf_name: currentPdfName,
@@ -110,7 +127,7 @@ function Chat({ currentPdfName }: ChatProps) {
   }, [messages]);
 
   return (
-    <div className="flex text-sm md:text-base items-center flex-col h-[87vh]">
+    <div className="flex text-sm md:text-base items-center flex-col h-[91vh] md:h-[87vh]">
       <div className="w-screen flex-1 overflow-y-auto px-4 py-6 space-y-6">
         {messages.map((msg, index) => (
           <div
@@ -119,7 +136,7 @@ function Chat({ currentPdfName }: ChatProps) {
           >
             {msg.sender === "user" ? (
               <>
-                <img src="/user.svg" className="mt-2" width={25} />
+                <img src="/user.svg" className="mt-2.5" width={30} />
                 <div className="font-semibold mt-2 text-gray-800">
                   {msg.text}
                   <div className="text-xs text-gray-500 self-end">
@@ -137,7 +154,7 @@ function Chat({ currentPdfName }: ChatProps) {
               </>
             ) : (
               <>
-                <img src="/vite.svg" width={25} />
+                <img src="/vite.svg" width={30} />
                 <div className="text-gray-950 prose prose-sm sm:prose !max-w-5xl flex flex-col">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                   <div className="text-xs text-gray-500 self-end">
@@ -145,7 +162,7 @@ function Chat({ currentPdfName }: ChatProps) {
                       year: "numeric",
                       month: "short",
                       day: "numeric",
-                    })}{" "}
+                    })}
                     {new Date(msg.timestamp).toLocaleTimeString(undefined, {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -158,7 +175,7 @@ function Chat({ currentPdfName }: ChatProps) {
         ))}
         {isLoading && (
           <div className="flex items-start gap-4 px-1 sm:px-6">
-            <img src="/vite.svg" width={25} />
+            <img src="/vite.svg" width={30} />
             <div className=" text-gray-800">Thinking...</div>
           </div>
         )}

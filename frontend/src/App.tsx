@@ -9,16 +9,16 @@ function App() {
   );
   const [availableDocuments, setAvailableDocuments] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const response = await axios.get("http://localhost:8000/documents/");
-        setAvailableDocuments(response.data);
-      } catch (error) {
-        console.error("Error fetching documents:", error);
-      }
-    };
+  const fetchDocuments = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/documents/");
+      setAvailableDocuments(response.data);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchDocuments();
   }, []);
 
@@ -36,6 +36,7 @@ function App() {
         onFileUpload={setCurrentPdfName}
         availableDocuments={availableDocuments}
         currentPdfName={currentPdfName}
+        onDocumentsRefresh={fetchDocuments}
       />
       <Chat currentPdfName={currentPdfName} />
     </div>

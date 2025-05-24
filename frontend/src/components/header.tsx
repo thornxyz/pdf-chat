@@ -1,23 +1,59 @@
 import { useRef, useState } from "react";
 import { CiCirclePlus } from "react-icons/ci";
+import { MdDelete } from "react-icons/md";
 import axios from "axios";
+import Select from "react-select";
 
 interface HeaderProps {
   onFileUpload: (fileName: string | null) => void;
   availableDocuments: string[];
   currentPdfName: string | null;
+  onDocumentsRefresh: () => Promise<void>;
 }
 
 function Header({
   onFileUpload,
   availableDocuments,
   currentPdfName,
+  onDocumentsRefresh,
 }: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const options = availableDocuments.map((doc) => ({
+    value: doc,
+    label: doc.length > 30 ? doc.slice(0, 30) + "..." : doc,
+  }));
+
+  const selectedOption = options.find(
+    (option) => option.value === currentPdfName
+  );
+
+  const handleDeleteDocument = async () => {
+    if (!currentPdfName) return;
+
+    if (
+      window.confirm(`Are you sure you want to delete "${currentPdfName}"?`)
+    ) {
+      setIsDeleting(true);
+      try {
+        // URL encode the PDF name to handle spaces and special characters
+        const encodedPdfName = encodeURIComponent(currentPdfName);
+        await axios.delete(`http://localhost:8000/documents/${encodedPdfName}`);
+        onFileUpload(null); // Clear the current document
+        await onDocumentsRefresh();
+      } catch (error) {
+        console.error("Error deleting document:", error);
+        alert("Failed to delete document!");
+      } finally {
+        setIsDeleting(false);
+      }
+    }
   };
 
   const handleFileChange = async (
@@ -39,9 +75,9 @@ function Header({
             },
           }
         );
-
         if (response.data.filename) {
           onFileUpload(response.data.filename);
+          await onDocumentsRefresh();
         } else {
           throw new Error("No filename in response");
         }
@@ -60,49 +96,104 @@ function Header({
     }
   };
 
-  const handleDocumentSelect = (
-    event: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const selectedDoc = event.target.value;
-    if (selectedDoc) {
-      onFileUpload(selectedDoc);
+  const handleDocumentSelect = (selected: { value: string } | null) => {
+    if (selected) {
+      onFileUpload(selected.value);
     } else {
       onFileUpload(null);
     }
   };
 
   return (
-    <div className="px-6 py-4 shadow-lg flex justify-between items-center">
+    <div className="px-1 py-1 md:px-6 md:py-2 shadow-lg flex justify-between items-center">
       <img src="/Logo.svg" width={100} />
 
-      <div className="flex items-center gap-3 md:gap-8">
-        <div className="w-full sm:w-auto max-w-xs">
-          <select
-            value={currentPdfName || ""}
-            onChange={handleDocumentSelect}
-            className="w-[100px] sm:w-full border-[1px] border-green-500 text-green-600 rounded-lg p-2 text-xs md:text-sm outline-none "
+      <div className="flex items-center gap-1 md:gap-6">
+        {currentPdfName && (
+          <button
+            onClick={handleDeleteDocument}
+            disabled={isDeleting}
+            className="p-0.5 rounded-full text-red-600 hover:bg-red-100 hover:text-red-800 disabled:opacity-50 transition-colors"
+            title="Delete document"
           >
-            <option value="" className="text-black">
-              📄 Select document
-            </option>
-            {availableDocuments.map((doc) => (
-              <option
-                key={doc}
-                value={doc}
-                className={
-                  doc === currentPdfName ? "text-green-600" : "text-black"
-                }
-              >
-                {doc}
-              </option>
-            ))}
-          </select>
+            <span className="block sm:hidden">
+              <MdDelete size={20} />
+            </span>
+            <span className="hidden sm:block">
+              <MdDelete size={24} />
+            </span>
+          </button>
+        )}
+        <div className="w-[100px] sm:w-[250px]">
+          <Select
+            onChange={handleDocumentSelect}
+            options={options}
+            value={selectedOption}
+            placeholder="Select document"
+            className="text-nowrap text-xs md:text-sm"
+            styles={{
+              control: (base, state) => ({
+                ...base,
+                minHeight: "36px",
+                fontSize: "0.875rem",
+                borderColor: state.isFocused ? "#22c55e" : base.borderColor,
+                boxShadow: state.isFocused
+                  ? "0 0 0 2px rgba(34, 197, 94, 0.5)"
+                  : base.boxShadow,
+                "&:hover": {
+                  borderColor: "#22c55e",
+                },
+                "@media (max-width: 640px)": {
+                  minHeight: "28px",
+                  fontSize: "10px",
+                },
+              }),
+              dropdownIndicator: (base) => ({
+                ...base,
+                padding: "2px",
+                svg: {
+                  height: 16,
+                  width: 16,
+                },
+                "@media (max-width: 640px)": {
+                  svg: {
+                    height: 12,
+                    width: 12,
+                  },
+                },
+              }),
+              indicatorSeparator: () => ({
+                display: "none",
+              }),
+              valueContainer: (base) => ({
+                ...base,
+                padding: "0 6px",
+                "@media (max-width: 640px)": {
+                  padding: "0 4px",
+                },
+              }),
+              option: (base) => ({
+                ...base,
+                fontSize: "0.875rem",
+                "@media (max-width: 640px)": {
+                  fontSize: "10px",
+                },
+              }),
+              menu: (base) => ({
+                ...base,
+                fontSize: "0.875rem",
+                "@media (max-width: 640px)": {
+                  fontSize: "10px",
+                },
+              }),
+            }}
+          />
         </div>
 
         <button
           onClick={handleButtonClick}
           disabled={isUploading}
-          className="cursor-pointer border-2 p-1 sm:py-2 sm:px-8 rounded-full sm:rounded-xl text-sm flex gap-3 items-center font-semibold disabled:opacity-50"
+          className="bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-1 md:py-2 md:px-4 rounded-full md:rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 disabled:opacity-50 transition-colors flex items-center gap-2 text-sm"
         >
           <CiCirclePlus size={20} />
           <span className="hidden sm:inline">

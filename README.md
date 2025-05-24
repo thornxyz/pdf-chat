@@ -1,3 +1,5 @@
+# ChatPDF - PDF Question Answering System
+
 A full-stack application that allows users to upload PDF documents and ask questions about their content. The backend processes the documents using Natural Language Processing (NLP) to answer the questions, and the frontend provides an intuitive interface for users to interact with the system.
 
 ## Technologies Used
@@ -7,15 +9,20 @@ A full-stack application that allows users to upload PDF documents and ask quest
 - **Framework**: FastAPI
 - **Libraries**: LangChain, PyMuPDF, FAISS
 - **Database**: SQLite for storing document metadata and chat history, FAISS for vector database storage. PDFs are stored on disk.
-- **Other**: Google Generative AI for embeddings and NLP
+- **AI/ML**: Google Generative AI (Gemini 2.0 Flash for text generation, Gemini Embedding for embeddings)
+- **Additional Libraries**: Python-dotenv, Pydantic, Python-multipart
 
 ### Frontend
 
-- **Framework**: React.js
+- **Framework**: React.js (v19.0.0)
 - **Language**: TypeScript
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **Libraries**: Axios, React Icons, React Markdown
+- **Build Tool**: Vite (v6.3.1)
+- **Styling**: TailwindCSS (v4.1.4) with Typography plugin
+- **Libraries**:
+  - Axios for API communication
+  - React Icons for UI icons
+  - React Markdown for rendering markdown responses
+  - React Select for document selection dropdown
 
 ## Installation
 
@@ -34,25 +41,33 @@ A full-stack application that allows users to upload PDF documents and ask quest
 2. Create a virtual environment and activate it:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   # On Windows
+   venv\Scripts\activate
+   # On macOS/Linux
+   source venv/bin/activate
    ```
 3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Start the backend server:
+4. Create a `.env` file in the `backend` directory and add your Google API key:
+   ```env
+   GOOGLE_API_KEY=your_google_api_key_here
+   ```
+5. Start the backend server:
    ```bash
    uvicorn api:app --reload
    ```
 
 ### Environment Setup
 
-1. Create a `.env` file in the `backend` directory.
-2. Add your Google API key to the `.env` file:
-   ```env
-   GOOGLE_API_KEY=your_google_api_key_here
-   ```
-   > **Note**: The `.env` file is crucial for the application to function correctly. Ensure it is in the same directory as the `main.py` file and contains all required environment variables.
+The `.env` file is crucial for the application to function correctly. It should be placed in the `backend` directory and contain:
+
+```env
+GOOGLE_API_KEY=your_google_api_key_here
+```
+
+> **Note**: You can obtain a Google API key from the [Google AI Studio](https://aistudio.google.com/app/apikey). The application uses Google's Gemini models for both embeddings and text generation.
 
 ### Frontend Setup
 
@@ -81,7 +96,6 @@ The application uses SQLite for storing document metadata and chat history. The 
   - `id` (INTEGER): Primary key.
   - `filename` (TEXT): Name of the uploaded PDF file.
   - `upload_time` (TEXT): Timestamp of when the file was uploaded.
-  - `user_id` (TEXT): (Optional) ID of the user who uploaded the file.
 
 - **`chats` Table**:
   - `id` (INTEGER): Primary key.
@@ -94,10 +108,33 @@ The database file is named `database.db` and is located in the `backend` directo
 
 ## Usage
 
-1. Open the frontend in your browser (default: `http://localhost:5173`).
-2. Upload a PDF document.
-3. Ask questions about the content of the uploaded PDF.
-4. View the answers and chat history.
+1. **Start the Backend**:
+
+   ```bash
+   cd backend
+   uvicorn api:app --reload
+   ```
+
+2. **Start the Frontend**:
+
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. **Access the Application**:
+
+   - Open your browser to `http://localhost:5173`
+   - Upload a PDF document using the green upload button
+   - Select the uploaded document from the dropdown
+   - Start asking questions about the PDF content
+
+4. **Features**:
+   - **Upload PDF**: Click the "+" button to upload new PDF files
+   - **Select Document**: Use the dropdown to switch between uploaded documents
+   - **Ask Questions**: Type questions in the chat input and press Enter
+   - **Delete Documents**: Use the trash icon to delete documents and their data
+   - **View History**: Chat history is automatically saved and restored
 
 ## API Documentation
 
@@ -150,11 +187,22 @@ The backend server runs at `http://localhost:8000`.
 - **Method**: `GET`
 - **Description**: Retrieves the chat history (questions and answers) for a specific PDF.
 - **Path Parameter**:
-  - `pdf_name` (string): The name of the PDF file.
+  - `pdf_name` (string): The name of the PDF file (URL encoded).
 - **Response**:
   - `200 OK`: JSON array of chat history entries.
   - `404 Not Found`: If the specified PDF is not found.
   - `500 Internal Server Error`: If there is an error retrieving the chat history.
+
+#### 5. **Delete Document**
+
+- **URL**: `/documents/{pdf_name}`
+- **Method**: `DELETE`
+- **Description**: Deletes a PDF document and all associated data (chat history, vector store).
+- **Path Parameter**:
+  - `pdf_name` (string): The name of the PDF file (URL encoded).
+- **Response**:
+  - `200 OK`: JSON object with a success message.
+  - `500 Internal Server Error`: If there is an error during deletion.
 
 ## High-Level Design (HLD)
 
@@ -162,16 +210,19 @@ The application is a full-stack system designed to process and interact with PDF
 
 ### Backend
 
-- **PDF Processing**: Handles the upload and parsing of PDF documents. Extracts text and generates embeddings using Google Generative AI.
-- **Question Answering**: Uses LangChain and FAISS to retrieve relevant content and answer user queries.
+- **PDF Processing**: Handles the upload and parsing of PDF documents. Extracts text using PyMuPDF and generates embeddings using Google Generative AI (Gemini Embedding model).
+- **Question Answering**: Uses LangChain and FAISS to retrieve relevant content and answer user queries using Google's Gemini 2.0 Flash model.
 - **Database Management**: Stores metadata about uploaded PDFs and chat history in SQLite.
 - **API Layer**: Exposes RESTful endpoints for the frontend to interact with the backend.
+- **Vector Storage**: Uses FAISS for efficient similarity search of document embeddings.
 
 ### Frontend
 
-- **User Interface**: Built with React.js and styled using TailwindCSS. Provides an intuitive interface for uploading PDFs, asking questions, and viewing chat history.
-- **State Management**: Manages application state using React hooks.
+- **User Interface**: Built with React.js and styled using TailwindCSS v4. Provides an intuitive interface for uploading PDFs, asking questions, and viewing chat history.
+- **State Management**: Manages application state using React hooks with local storage for persistence.
 - **API Integration**: Communicates with the backend using Axios to fetch and display data.
+- **Document Management**: Includes features for selecting, uploading, and deleting PDF documents.
+- **Responsive Design**: Fully responsive interface that works on desktop and mobile devices.
 
 ### Interaction Flow
 
@@ -189,22 +240,29 @@ The application is a full-stack system designed to process and interact with PDF
 
 1. **API Endpoints**:
 
-   - `/upload/`: Handles PDF uploads.
+   - `/upload/`: Handles PDF uploads and processing.
    - `/ask/`: Processes user questions and returns answers.
    - `/documents/`: Lists all uploaded PDFs.
    - `/chat-history/{pdf_name}`: Retrieves chat history for a specific PDF.
+   - `/documents/{pdf_name}`: Deletes a PDF and associated data.
 
-2. **PDF Processing**:
+2. **PDF Processing** (`pdf_processor.py`):
 
-   - Extracts text using PyMuPDF.
-   - Generates embeddings using Google Generative AI.
+   - Extracts text using PyMuPDF (fitz library).
+   - Generates embeddings using Google Generative AI Embedding model.
+   - Chunks documents using RecursiveCharacterTextSplitter (2000 chars, 300 overlap).
+   - Stores embeddings in FAISS vector database.
 
-3. **Database**:
+3. **Database** (`database.py`):
 
    - SQLite database with `documents` and `chats` tables.
+   - Context manager for safe database operations.
+   - Automatic database initialization on startup.
 
 4. **Vector Store**:
-   - FAISS for storing and querying embeddings.
+   - FAISS for storing and querying document embeddings.
+   - Each PDF gets its own vector store file.
+   - Supports similarity search for relevant document retrieval.
 
 #### Interactions
 
@@ -217,20 +275,29 @@ The application is a full-stack system designed to process and interact with PDF
 
 1. **Components**:
 
-   - `App.tsx`: Main application component.
-   - `chat.tsx`: Displays chat history and input field for questions.
-   - `header.tsx`: Displays the application header.
+   - `App.tsx`: Main application component with state management.
+   - `chat.tsx`: Chat interface with message display and input handling.
+   - `header.tsx`: Navigation header with document selection and upload.
 
-2. **Pages**:
+2. **Features**:
 
-   - `index.html`: Entry point for the application.
+   - Document upload with drag-and-drop support.
+   - Document selection dropdown with search.
+   - Real-time chat interface with markdown support.
+   - Persistent chat history across sessions.
+   - Document deletion functionality.
+   - Responsive design for mobile and desktop.
 
 3. **API Integration**:
 
-   - Uses Axios to interact with backend endpoints.
+   - Uses Axios for HTTP requests to backend.
+   - Handles file uploads with FormData.
+   - URL encoding for document names with special characters.
 
 4. **Styling**:
-   - TailwindCSS for responsive and modern UI design.
+   - TailwindCSS v4 for modern, responsive design.
+   - Typography plugin for markdown rendering.
+   - Custom responsive breakpoints and utility classes.
 
 #### Interactions
 
@@ -243,51 +310,48 @@ The application is a full-stack system designed to process and interact with PDF
 
 - **`api.py`**:
 
-  - Defines all API endpoints.
-  - Handles PDF uploads, question answering, and chat history retrieval.
+  - Main FastAPI application with all API endpoints.
+  - CORS middleware configuration for frontend communication.
+  - Error handling and response formatting.
 
-- **`main.py`**:
+- **`pdf_processor.py`**:
 
-  - Entry point for the backend application.
-  - Initializes the FastAPI app and database.
+  - PDF text extraction using PyMuPDF.
+  - Document chunking and embedding generation.
+  - FAISS vector store management.
+  - Question answering using LangChain and Google Gemini.
 
-- **`database.db`**:
+- **`database.py`**:
 
-  - SQLite database file for storing metadata and chat history.
+  - SQLite database operations with context managers.
+  - Database schema initialization.
+  - CRUD operations for documents and chat history.
 
-- **`vectorstores/`**:
-  - Stores FAISS index files for embeddings.
+- **`requirements.txt`**:
+
+  - Complete list of Python dependencies.
+
+- **File Structure**:
+  - `pdfs/`: Directory for storing uploaded PDF files.
+  - `vectorstores/`: Directory for FAISS index files.
+  - `database.db`: SQLite database file.
 
 ### Frontend
 
-- **`src/`**:
+- **`src/`**: Contains all React components and application logic.
 
-  - Contains all React components and application logic.
+- **Components**:
 
-- **`components/`**:
+  - `App.tsx`: Main app with state management and API integration.
+  - `chat.tsx`: Chat interface with message handling and markdown rendering.
+  - `header.tsx`: Header with file upload, document selection, and deletion.
 
-  - `chat.tsx`: Manages chat interactions.
-  - `header.tsx`: Displays the application header.
+- **Configuration**:
 
-- **`public/`**:
+  - `vite.config.ts`: Vite build configuration with TailwindCSS.
+  - `package.json`: Dependencies and build scripts.
+  - `tsconfig.json`: TypeScript configuration.
+  - `index.html`: Application entry point.
 
-  - Contains static assets like images and icons.
-
-- **`vite.config.ts`**:
-  - Configuration file for the Vite build tool.
-
-### Key Interactions
-
-1. **PDF Upload**:
-
-   - Frontend sends the file to `/upload/`.
-   - Backend processes the file and updates the database.
-
-2. **Question Answering**:
-
-   - Frontend sends a question to `/ask/`.
-   - Backend retrieves relevant content and generates an answer.
-
-3. **Chat History**:
-   - Frontend fetches chat history from `/chat-history/{pdf_name}`.
-   - Backend retrieves and returns the chat history from the database.
+- **Assets**:
+  - `public/`: Contains SVG icons (ai.svg, user.svg, Logo.svg).
