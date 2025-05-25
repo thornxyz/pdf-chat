@@ -1,10 +1,6 @@
-import React, { useState, useEffect, ReactNode } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { PdfContext, PdfContextType } from "./PdfContextTypes";
-
-interface PdfProviderProps {
-  children: ReactNode;
-}
+import { PdfContext, PdfContextType, PdfProviderProps } from "../lib/types";
 
 export const PdfProvider: React.FC<PdfProviderProps> = ({ children }) => {
   const [currentPdfName, setCurrentPdfNameState] = useState<string | null>(

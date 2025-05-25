@@ -4,6 +4,7 @@ import { MdDelete } from "react-icons/md";
 import axios from "axios";
 import Select from "react-select";
 import { usePdfContext } from "../hooks/usePdfContext";
+import { DocumentSelectOption, UploadResponse } from "../lib/types";
 
 function Header() {
   const {
@@ -20,8 +21,7 @@ function Header() {
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
-
-  const options = availableDocuments.map((doc) => ({
+  const options: DocumentSelectOption[] = availableDocuments.map((doc) => ({
     value: doc,
     label: doc.length > 30 ? doc.slice(0, 30) + "..." : doc,
   }));
@@ -61,8 +61,7 @@ function Header() {
       try {
         const formData = new FormData();
         formData.append("file", file);
-
-        const response = await axios.post(
+        const response = await axios.post<UploadResponse>(
           "http://localhost:8000/upload/",
           formData,
           {
@@ -94,8 +93,7 @@ function Header() {
       alert("Please upload a valid PDF file!");
     }
   };
-
-  const handleDocumentSelect = (selected: { value: string } | null) => {
+  const handleDocumentSelect = (selected: DocumentSelectOption | null) => {
     if (selected) {
       setCurrentPdfName(selected.value);
     } else {

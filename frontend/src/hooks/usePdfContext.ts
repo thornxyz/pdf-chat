@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { PdfContext } from "../contexts/PdfContextTypes";
+import { PdfContext } from "../lib/types";
 
 export const usePdfContext = () => {
     const context = useContext(PdfContext);

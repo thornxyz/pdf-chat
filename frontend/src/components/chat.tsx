@@ -3,12 +3,7 @@ import { IoMdSend } from "react-icons/io";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { usePdfContext } from "../hooks/usePdfContext";
-
-interface Message {
-  sender: "user" | "bot";
-  text: string;
-  timestamp: string;
-}
+import { Message, ChatHistoryEntry, AskResponse } from "../lib/types";
 
 function Chat() {
   const { currentPdfName } = usePdfContext();
@@ -41,24 +36,18 @@ function Chat() {
           setMessages([welcomeMessage]);
         } else {
           const formattedMessages = history
-            .map(
-              (entry: {
-                question: string;
-                answer: string;
-                timestamp: string;
-              }) => [
-                {
-                  sender: "user" as const,
-                  text: entry.question,
-                  timestamp: entry.timestamp,
-                },
-                {
-                  sender: "bot" as const,
-                  text: entry.answer,
-                  timestamp: entry.timestamp,
-                },
-              ]
-            )
+            .map((entry: ChatHistoryEntry) => [
+              {
+                sender: "user" as const,
+                text: entry.question,
+                timestamp: entry.timestamp,
+              },
+              {
+                sender: "bot" as const,
+                text: entry.answer,
+                timestamp: entry.timestamp,
+              },
+            ])
             .flat();
           setMessages(formattedMessages);
         }
@@ -89,10 +78,13 @@ function Chat() {
     setInput("");
     setIsLoading(true);
     try {
-      const response = await axios.post("http://localhost:8000/ask/", {
-        pdf_name: currentPdfName,
-        question: input,
-      });
+      const response = await axios.post<AskResponse>(
+        "http://localhost:8000/ask/",
+        {
+          pdf_name: currentPdfName,
+          question: input,
+        }
+      );
 
       const botMessage: Message = {
         sender: "bot",
