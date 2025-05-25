@@ -1,18 +1,9 @@
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    Text,
-    DateTime,
-    ForeignKey,
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.sql import func
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from typing import Dict, List
 from contextlib import contextmanager
 import os
+from models import Base, Document, Chat
 
 os.makedirs("../data", exist_ok=True)
 
@@ -20,33 +11,6 @@ DB_PATH = "sqlite:///../data/database.db"
 
 engine = create_engine(DB_PATH, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
-# SQLAlchemy Models
-class Document(Base):
-    __tablename__ = "documents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, nullable=False)
-    upload_time = Column(DateTime, default=func.now(), nullable=False)
-
-    chats = relationship(
-        "Chat", back_populates="document", cascade="all, delete-orphan"
-    )
-
-
-class Chat(Base):
-    __tablename__ = "chats"
-
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
-    timestamp = Column(DateTime, default=func.now(), nullable=False)
-    question = Column(Text, nullable=False)
-    answer = Column(Text, nullable=False)
-
-    # Relationship to document
-    document = relationship("Document", back_populates="chats")
 
 
 @contextmanager
@@ -76,7 +40,6 @@ def insert_document(filename: str) -> None:
 
 # Get the document ID for a given filename
 def get_document_id(filename: str) -> int:
-    """Get document ID by filename"""
     with get_db_session() as session:
         document = session.query(Document).filter(Document.filename == filename).first()
         if not document:
@@ -122,7 +85,6 @@ def load_chat_history(pdf_name: str) -> List[Dict]:
 
 # Get all document filenames from the database
 def get_all_documents() -> List[str]:
-    """Get all document filenames from the database"""
     with get_db_session() as session:
         documents = session.query(Document).all()
         return [doc.filename for doc in documents]

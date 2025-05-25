@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { IoMdSend } from "react-icons/io";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
+import { usePdfContext } from "../hooks/usePdfContext";
 
 interface Message {
   sender: "user" | "bot";
@@ -9,11 +10,8 @@ interface Message {
   timestamp: string;
 }
 
-interface ChatProps {
-  currentPdfName: string | null;
-}
-
-function Chat({ currentPdfName }: ChatProps) {
+function Chat() {
+  const { currentPdfName } = usePdfContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);

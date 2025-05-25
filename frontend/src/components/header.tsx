@@ -1,34 +1,21 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { MdDelete } from "react-icons/md";
 import axios from "axios";
 import Select from "react-select";
+import { usePdfContext } from "../hooks/usePdfContext";
 
-interface HeaderProps {
-  onFileUpload: (fileName: string | null) => void;
-  availableDocuments: string[];
-  currentPdfName: string | null;
-  onDocumentsRefresh: () => Promise<void>;
-}
+function Header() {
+  const {
+    currentPdfName,
+    availableDocuments,
+    setCurrentPdfName,
+    refreshDocuments,
+  } = usePdfContext();
 
-function Header({
-  onFileUpload,
-  availableDocuments,
-  currentPdfName,
-  onDocumentsRefresh,
-}: HeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  useEffect(() => {
-    if (
-      currentPdfName &&
-      !availableDocuments.includes(currentPdfName) &&
-      !isUploading
-    ) {
-      onFileUpload(null);
-    }
-  }, [availableDocuments, currentPdfName, onFileUpload, isUploading]);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -43,6 +30,7 @@ function Header({
     currentPdfName && availableDocuments.includes(currentPdfName)
       ? options.find((option) => option.value === currentPdfName)
       : null;
+
   const handleDeleteDocument = async () => {
     if (!currentPdfName) return;
 
@@ -53,8 +41,8 @@ function Header({
       try {
         const encodedPdfName = encodeURIComponent(currentPdfName);
         await axios.delete(`http://localhost:8000/documents/${encodedPdfName}`);
-        onFileUpload(null);
-        await onDocumentsRefresh();
+        setCurrentPdfName(null);
+        await refreshDocuments();
       } catch (error) {
         console.error("Error deleting document:", error);
         alert("Failed to delete document!");
@@ -83,17 +71,18 @@ function Header({
             },
           }
         );
+
         if (response.data.filename) {
-          await onDocumentsRefresh();
+          await refreshDocuments();
           setTimeout(() => {
-            onFileUpload(response.data.filename);
+            setCurrentPdfName(response.data.filename);
           }, 100);
         } else {
           throw new Error("No filename in response");
         }
       } catch (error) {
         console.error("Error uploading file:", error);
-        onFileUpload(null);
+        setCurrentPdfName(null);
         alert("Failed to upload PDF file!");
       } finally {
         setIsUploading(false);
@@ -108,9 +97,9 @@ function Header({
 
   const handleDocumentSelect = (selected: { value: string } | null) => {
     if (selected) {
-      onFileUpload(selected.value);
+      setCurrentPdfName(selected.value);
     } else {
-      onFileUpload(null);
+      setCurrentPdfName(null);
     }
   };
 
@@ -134,6 +123,7 @@ function Header({
             </span>
           </button>
         )}
+
         <div className="w-[100px] sm:w-[250px]">
           <Select
             onChange={handleDocumentSelect}
