@@ -10,15 +10,14 @@ import shutil
 from dotenv import load_dotenv
 from database import save_chat_history
 
-# Load environment variables
 load_dotenv()
 
 if "GOOGLE_API_KEY" not in os.environ:
     raise EnvironmentError("GOOGLE_API_KEY not found in environment variables")
 
 # Directory setup
-PDFS_DIR = "pdfs/"
-VECTORSTORES_DIR = "vectorstores/"
+PDFS_DIR = "../data/pdfs/"
+VECTORSTORES_DIR = "../data/vectorstores/"
 
 for directory in [PDFS_DIR, VECTORSTORES_DIR]:
     os.makedirs(directory, exist_ok=True)

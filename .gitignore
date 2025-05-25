@@ -1,11 +1,7 @@
 .env
 venv
-vectorstores
-pdfs
-chats
+data/
 __pycache__
-
-*.db
 
 # Logs
 logs

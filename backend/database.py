@@ -12,8 +12,11 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import func
 from typing import Dict, List
 from contextlib import contextmanager
+import os
 
-DB_PATH = "sqlite:///database.db"
+os.makedirs("../data", exist_ok=True)
+
+DB_PATH = "sqlite:///../data/database.db"
 
 engine = create_engine(DB_PATH, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
