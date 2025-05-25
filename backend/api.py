@@ -1,22 +1,76 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from typing import List, Dict, Annotated
 import pdf_processor
 import database
 import os
-from typing import List, Dict
 import traceback
+from datetime import timedelta
+
+# Import authentication modules
+from auth import (
+    authenticate_user,
+    create_access_token,
+    get_current_active_user,
+    Token,
+    User,
+    UserCreate,
+    create_user,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
 
 app = FastAPI(title="PDF-Chat API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Authentication routes
+@app.post("/auth/register", response_model=User)
+async def register(user_create: UserCreate):
+    """Register a new user."""
+    try:
+        user = create_user(user_create)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@app.post("/auth/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+):
+    """Authenticate user and return access token."""
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@app.get("/auth/me", response_model=User)
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """Get current user information."""
+    return current_user
 
 
 class Question(BaseModel):
@@ -26,12 +80,16 @@ class Question(BaseModel):
 
 # Upload a PDF file, save it to disk, store in database, and process for vector search
 @app.post("/upload/")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(
+    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
+):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
     try:
-        file_path = os.path.join(pdf_processor.PDFS_DIR, file.filename)
+        # Create user-specific filename to prevent conflicts
+        safe_filename = f"{current_user.id}_{file.filename}"
+        file_path = os.path.join(pdf_processor.PDFS_DIR, safe_filename)
         content = await file.read()
 
         try:
@@ -44,10 +102,10 @@ async def upload_pdf(file: UploadFile = File(...)):
                 status_code=500, detail=f"Failed to save PDF file: {str(e)}"
             )
 
-        database.insert_document(file.filename)
+        database.insert_document(safe_filename, current_user.id)
 
         try:
-            pdf_processor.process_pdf(file.filename)
+            pdf_processor.process_pdf(safe_filename)
         except Exception as e:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -58,7 +116,8 @@ async def upload_pdf(file: UploadFile = File(...)):
         return JSONResponse(
             content={
                 "message": "PDF uploaded and processed successfully",
-                "filename": file.filename,
+                "filename": safe_filename,
+                "original_filename": file.filename,
             }
         )
     except Exception as e:
@@ -75,8 +134,16 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 # Process a question against a specific PDF using vector search and AI
 @app.post("/ask/")
-async def ask_question(query: Question):
+async def ask_question(
+    query: Question, current_user: User = Depends(get_current_active_user)
+):
     try:
+        # Check if user owns this document
+        if not database.check_document_ownership(query.pdf_name, current_user.id):
+            raise HTTPException(
+                status_code=403, detail="You don't have access to this PDF"
+            )
+
         pdf_path = os.path.join(pdf_processor.PDFS_DIR, query.pdf_name)
         if not os.path.exists(pdf_path):
             raise HTTPException(
@@ -96,33 +163,59 @@ async def ask_question(query: Question):
 
 # Get list of all uploaded documents from database
 @app.get("/documents/")
-async def list_documents() -> List[str]:
-    return database.get_all_documents()
+async def list_documents(
+    current_user: User = Depends(get_current_active_user),
+) -> List[Dict]:
+    documents = database.get_all_documents(current_user.id)
+    # Return both safe filename and original filename for display
+    return [
+        {"filename": doc, "display_name": doc.split("_", 1)[1] if "_" in doc else doc}
+        for doc in documents
+    ]
 
 
 # Get chat history for a specific PDF document
 @app.get("/chat-history/{pdf_name}")
-async def get_chat_history(pdf_name: str) -> List[Dict]:
+async def get_chat_history(
+    pdf_name: str, current_user: User = Depends(get_current_active_user)
+) -> List[Dict]:
     try:
         # URL decode the pdf_name parameter
         import urllib.parse
 
         decoded_pdf_name = urllib.parse.unquote(pdf_name)
+
+        # Check if user owns this document
+        if not database.check_document_ownership(decoded_pdf_name, current_user.id):
+            raise HTTPException(
+                status_code=403, detail="You don't have access to this PDF"
+            )
+
         return database.load_chat_history(decoded_pdf_name)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Delete a PDF document and all associated data
 @app.delete("/documents/{pdf_name}")
-async def delete_document(pdf_name: str):
+async def delete_document(
+    pdf_name: str, current_user: User = Depends(get_current_active_user)
+):
     try:
         import urllib.parse
 
         decoded_pdf_name = urllib.parse.unquote(pdf_name)
 
+        # Check if user owns this document
+        if not database.check_document_ownership(decoded_pdf_name, current_user.id):
+            raise HTTPException(
+                status_code=403, detail="You don't have access to this PDF"
+            )
+
         try:
-            database.delete_document(decoded_pdf_name)
+            database.delete_document(decoded_pdf_name, current_user.id)
         except Exception as db_error:
             print(f"Warning: Error during database deletion: {str(db_error)}")
 
@@ -134,6 +227,8 @@ async def delete_document(pdf_name: str):
         return JSONResponse(
             content={"message": f"Document {decoded_pdf_name} deleted successfully"}
         )
+    except HTTPException:
+        raise
     except Exception as e:
         print("Error during document deletion:", traceback.format_exc())
         raise HTTPException(

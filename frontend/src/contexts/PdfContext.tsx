@@ -1,23 +1,31 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { PdfContext, PdfContextType, PdfProviderProps } from "../lib/types";
+import {
+  PdfContext,
+  PdfContextType,
+  PdfProviderProps,
+  Document,
+} from "../lib/types";
+import api from "../lib/api";
 
 export const PdfProvider: React.FC<PdfProviderProps> = ({ children }) => {
   const [currentPdfName, setCurrentPdfNameState] = useState<string | null>(
     localStorage.getItem("currentPdfName")
   );
-  const [availableDocuments, setAvailableDocuments] = useState<string[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<Document[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
   const fetchDocuments = async () => {
     try {
       setIsLoadingDocuments(true);
-      const response = await axios.get("http://localhost:8000/documents/");
+      const response = await api.get<Document[]>("/documents/");
       setAvailableDocuments(response.data);
 
       // Check if the current PDF still exists after loading documents
       const storedPdfName = localStorage.getItem("currentPdfName");
-      if (storedPdfName && !response.data.includes(storedPdfName)) {
+      if (
+        storedPdfName &&
+        !response.data.some((doc) => doc.filename === storedPdfName)
+      ) {
         setCurrentPdfNameState(null);
         localStorage.removeItem("currentPdfName");
       }

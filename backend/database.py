@@ -32,9 +32,9 @@ def initialize_database():
 
 
 # Insert a new document record into the database
-def insert_document(filename: str) -> None:
+def insert_document(filename: str, user_id: int) -> None:
     with get_db_session() as session:
-        document = Document(filename=filename)
+        document = Document(filename=filename, user_id=user_id)
         session.add(document)
 
 
@@ -83,25 +83,38 @@ def load_chat_history(pdf_name: str) -> List[Dict]:
         ]
 
 
-# Get all document filenames from the database
-def get_all_documents() -> List[str]:
+# Get all document filenames from the database for a specific user
+def get_all_documents(user_id: int) -> List[str]:
     with get_db_session() as session:
-        documents = session.query(Document).all()
+        documents = session.query(Document).filter(Document.user_id == user_id).all()
         return [doc.filename for doc in documents]
 
 
 # Delete a document and its associated chat history from the database
-def delete_document(filename: str) -> None:
+def delete_document(filename: str, user_id: int) -> None:
     with get_db_session() as session:
         try:
             document = (
-                session.query(Document).filter(Document.filename == filename).first()
+                session.query(Document)
+                .filter(Document.filename == filename, Document.user_id == user_id)
+                .first()
             )
             if document:
                 session.delete(document)
         except Exception as e:
             print(f"Error deleting document from database: {e}")
             raise
+
+
+# Check if a document belongs to a specific user
+def check_document_ownership(filename: str, user_id: int) -> bool:
+    with get_db_session() as session:
+        document = (
+            session.query(Document)
+            .filter(Document.filename == filename, Document.user_id == user_id)
+            .first()
+        )
+        return document is not None
 
 
 # Initialize database when module is imported

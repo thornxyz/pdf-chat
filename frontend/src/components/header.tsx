@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { MdDelete } from "react-icons/md";
-import axios from "axios";
+import { FiLogOut } from "react-icons/fi";
 import Select from "react-select";
 import { usePdfContext } from "../hooks/usePdfContext";
+import { useAuth } from "../hooks/useAuth";
 import { DocumentSelectOption, UploadResponse } from "../lib/types";
+import api from "../lib/api";
 
 function Header() {
   const {
@@ -14,6 +16,8 @@ function Header() {
     refreshDocuments,
   } = usePdfContext();
 
+  const { user, logout } = useAuth();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -22,12 +26,16 @@ function Header() {
     fileInputRef.current?.click();
   };
   const options: DocumentSelectOption[] = availableDocuments.map((doc) => ({
-    value: doc,
-    label: doc.length > 30 ? doc.slice(0, 30) + "..." : doc,
+    value: doc.filename,
+    label:
+      doc.display_name.length > 30
+        ? doc.display_name.slice(0, 30) + "..."
+        : doc.display_name,
   }));
 
   const selectedOption =
-    currentPdfName && availableDocuments.includes(currentPdfName)
+    currentPdfName &&
+    availableDocuments.some((doc) => doc.filename === currentPdfName)
       ? options.find((option) => option.value === currentPdfName)
       : null;
 
@@ -40,7 +48,7 @@ function Header() {
       setIsDeleting(true);
       try {
         const encodedPdfName = encodeURIComponent(currentPdfName);
-        await axios.delete(`http://localhost:8000/documents/${encodedPdfName}`);
+        await api.delete(`/documents/${encodedPdfName}`);
         setCurrentPdfName(null);
         await refreshDocuments();
       } catch (error) {
@@ -61,15 +69,11 @@ function Header() {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const response = await axios.post<UploadResponse>(
-          "http://localhost:8000/upload/",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        const response = await api.post<UploadResponse>("/upload/", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
         if (response.data.filename) {
           await refreshDocuments();
@@ -121,7 +125,6 @@ function Header() {
             </span>
           </button>
         )}
-
         <div className="w-[100px] sm:w-[250px]">
           <Select
             onChange={handleDocumentSelect}
@@ -186,8 +189,7 @@ function Header() {
               }),
             }}
           />
-        </div>
-
+        </div>{" "}
         <button
           onClick={handleButtonClick}
           disabled={isUploading}
@@ -198,7 +200,18 @@ function Header() {
             {isUploading ? "Uploading..." : "Upload PDF"}
           </span>
         </button>
-
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600 hidden md:inline">
+            {user?.username}
+          </span>
+          <button
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-1 md:py-2 md:px-4 rounded-full md:rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 transition-colors flex items-center gap-2 text-sm"
+          >
+            <FiLogOut size={16} />
+            <span className="hidden sm:inline">Logout</span>
+          </button>
+        </div>
         <input
           type="file"
           accept="application/pdf"

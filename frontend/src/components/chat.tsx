@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { IoMdSend } from "react-icons/io";
-import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import { usePdfContext } from "../hooks/usePdfContext";
 import { Message, ChatHistoryEntry, AskResponse } from "../lib/types";
+import api from "../lib/api";
 
 function Chat() {
   const { currentPdfName } = usePdfContext();
@@ -19,15 +19,11 @@ function Chat() {
       }
 
       try {
-        // URL encode the PDF name to handle spaces and special characters
         const encodedPdfName = encodeURIComponent(currentPdfName);
-        const response = await axios.get(
-          `http://localhost:8000/chat-history/${encodedPdfName}`
-        );
+        const response = await api.get(`/chat-history/${encodedPdfName}`);
         const history = response.data;
 
         if (history.length === 0) {
-          // Show welcome message if no chat history exists
           const welcomeMessage: Message = {
             sender: "bot",
             text: `Hello! I'm ready to help you with **${currentPdfName}**. Feel free to ask me anything about this document - I can answer questions, summarize content, or help you find specific information.`,
@@ -78,13 +74,10 @@ function Chat() {
     setInput("");
     setIsLoading(true);
     try {
-      const response = await axios.post<AskResponse>(
-        "http://localhost:8000/ask/",
-        {
-          pdf_name: currentPdfName,
-          question: input,
-        }
-      );
+      const response = await api.post<AskResponse>("/ask/", {
+        pdf_name: currentPdfName,
+        question: input,
+      });
 
       const botMessage: Message = {
         sender: "bot",
