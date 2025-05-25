@@ -10,7 +10,7 @@ A full-stack application that allows users to upload PDF documents and ask quest
 - **Libraries**: LangChain, PyMuPDF, FAISS
 - **Database**: SQLite for storing document metadata and chat history, FAISS for vector database storage. PDFs are stored on disk.
 - **AI/ML**: Google Generative AI (Gemini 2.0 Flash for text generation, Gemini Embedding for embeddings)
-- **Additional Libraries**: Python-dotenv, Pydantic, Python-multipart
+- **Additional Libraries**: Python-dotenv, Pydantic
 
 ### Frontend
 

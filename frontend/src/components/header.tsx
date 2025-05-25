@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { MdDelete } from "react-icons/md";
 import axios from "axios";
@@ -20,6 +20,15 @@ function Header({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  useEffect(() => {
+    if (
+      currentPdfName &&
+      !availableDocuments.includes(currentPdfName) &&
+      !isUploading
+    ) {
+      onFileUpload(null);
+    }
+  }, [availableDocuments, currentPdfName, onFileUpload, isUploading]);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -30,10 +39,10 @@ function Header({
     label: doc.length > 30 ? doc.slice(0, 30) + "..." : doc,
   }));
 
-  const selectedOption = options.find(
-    (option) => option.value === currentPdfName
-  );
-
+  const selectedOption =
+    currentPdfName && availableDocuments.includes(currentPdfName)
+      ? options.find((option) => option.value === currentPdfName)
+      : null;
   const handleDeleteDocument = async () => {
     if (!currentPdfName) return;
 
@@ -42,10 +51,9 @@ function Header({
     ) {
       setIsDeleting(true);
       try {
-        // URL encode the PDF name to handle spaces and special characters
         const encodedPdfName = encodeURIComponent(currentPdfName);
         await axios.delete(`http://localhost:8000/documents/${encodedPdfName}`);
-        onFileUpload(null); // Clear the current document
+        onFileUpload(null);
         await onDocumentsRefresh();
       } catch (error) {
         console.error("Error deleting document:", error);
@@ -76,8 +84,10 @@ function Header({
           }
         );
         if (response.data.filename) {
-          onFileUpload(response.data.filename);
           await onDocumentsRefresh();
+          setTimeout(() => {
+            onFileUpload(response.data.filename);
+          }, 100);
         } else {
           throw new Error("No filename in response");
         }

@@ -1,165 +1,142 @@
-import sqlite3
-from typing import Dict, List, Optional, Callable, TypeVar, Any
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.sql import func
+from typing import Dict, List
 from contextlib import contextmanager
 
-DB_PATH = "database.db"
+DB_PATH = "sqlite:///database.db"
 
-T = TypeVar("T")
+engine = create_engine(DB_PATH, echo=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+
+# SQLAlchemy Models
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, nullable=False)
+    upload_time = Column(DateTime, default=func.now(), nullable=False)
+
+    chats = relationship(
+        "Chat", back_populates="document", cascade="all, delete-orphan"
+    )
+
+
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    timestamp = Column(DateTime, default=func.now(), nullable=False)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=False)
+
+    # Relationship to document
+    document = relationship("Document", back_populates="chats")
 
 
 @contextmanager
-def get_db_connection():
-    """Context manager for database connections"""
-    conn = sqlite3.connect(DB_PATH)
+def get_db_session():
+    session = SessionLocal()
     try:
-        yield conn
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     finally:
-        conn.close()
-
-
-def execute_db_operation(operation: Callable[[sqlite3.Connection], T]) -> T:
-    """Execute a database operation with proper connection handling"""
-    with get_db_connection() as conn:
-        return operation(conn)
+        session.close()
 
 
 # Initialize the SQLite database with required tables
 def initialize_database():
-    def _initialize(conn: sqlite3.Connection):
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS documents (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename TEXT NOT NULL,
-                upload_time TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                document_id INTEGER NOT NULL,
-                timestamp TEXT NOT NULL,
-                question TEXT NOT NULL,
-                answer TEXT NOT NULL,
-                FOREIGN KEY (document_id) REFERENCES documents (id)
-            )
-            """
-        )
-        conn.commit()
-
-    execute_db_operation(_initialize)
+    Base.metadata.create_all(bind=engine)
 
 
 # Insert a new document record into the database
 def insert_document(filename: str) -> None:
-    def _insert(conn: sqlite3.Connection):
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO documents (filename, upload_time)
-            VALUES (?, datetime('now'))
-            """,
-            (filename,),
-        )
-        conn.commit()
-
-    execute_db_operation(_insert)
+    with get_db_session() as session:
+        document = Document(filename=filename)
+        session.add(document)
 
 
 # Get the document ID for a given filename
 def get_document_id(filename: str) -> int:
-    def _get_id(conn: sqlite3.Connection) -> int:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM documents WHERE filename = ?", (filename,))
-        document = cursor.fetchone()
-
+    """Get document ID by filename"""
+    with get_db_session() as session:
+        document = session.query(Document).filter(Document.filename == filename).first()
         if not document:
             raise ValueError(f"Document {filename} not found in the database")
-
-        return document[0]
-
-    return execute_db_operation(_get_id)
+        return document.id
 
 
 # Save a chat interaction to the database
 def save_chat_history(pdf_name: str, question: str, answer: str) -> None:
-    def _save(conn: sqlite3.Connection):
-        cursor = conn.cursor()
-        document_id = get_document_id(pdf_name)
+    with get_db_session() as session:
+        document = session.query(Document).filter(Document.filename == pdf_name).first()
+        if not document:
+            raise ValueError(f"Document {pdf_name} not found in the database")
 
-        cursor.execute(
-            """
-            INSERT INTO chats (document_id, timestamp, question, answer)
-            VALUES (?, datetime('now'), ?, ?)
-            """,
-            (document_id, question, answer),
-        )
-        conn.commit()
-
-    execute_db_operation(_save)
+        chat = Chat(document_id=document.id, question=question, answer=answer)
+        session.add(chat)
 
 
 # Load chat history for a specific document
 def load_chat_history(pdf_name: str) -> List[Dict]:
-    def _load(conn: sqlite3.Connection) -> List[Dict]:
-        cursor = conn.cursor()
-
-        try:
-            document_id = get_document_id(pdf_name)
-        except ValueError:
+    with get_db_session() as session:
+        document = session.query(Document).filter(Document.filename == pdf_name).first()
+        if not document:
             return []
 
-        cursor.execute(
-            """
-            SELECT timestamp, question, answer FROM chats
-            WHERE document_id = ?
-            ORDER BY timestamp ASC
-            """,
-            (document_id,),
+        # Get all chats for this document ordered by timestamp
+        chats = (
+            session.query(Chat)
+            .filter(Chat.document_id == document.id)
+            .order_by(Chat.timestamp.asc())
+            .all()
         )
 
         return [
-            {"timestamp": row[0], "question": row[1], "answer": row[2]}
-            for row in cursor.fetchall()
+            {
+                "timestamp": chat.timestamp.isoformat(),
+                "question": chat.question,
+                "answer": chat.answer,
+            }
+            for chat in chats
         ]
-
-    return execute_db_operation(_load)
 
 
 # Get all document filenames from the database
 def get_all_documents() -> List[str]:
-    def _get_all(conn: sqlite3.Connection) -> List[str]:
-        cursor = conn.cursor()
-        cursor.execute("SELECT filename FROM documents")
-        return [row[0] for row in cursor.fetchall()]
-
-    return execute_db_operation(_get_all)
+    """Get all document filenames from the database"""
+    with get_db_session() as session:
+        documents = session.query(Document).all()
+        return [doc.filename for doc in documents]
 
 
 # Delete a document and its associated chat history from the database
 def delete_document(filename: str) -> None:
-    def _delete(conn: sqlite3.Connection):
-        cursor = conn.cursor()
-
+    with get_db_session() as session:
         try:
-            # Check if the document exists
-            cursor.execute("SELECT id FROM documents WHERE filename = ?", (filename,))
-            document = cursor.fetchone()
-
+            document = (
+                session.query(Document).filter(Document.filename == filename).first()
+            )
             if document:
-                document_id = document[0]
-                cursor.execute(
-                    "DELETE FROM chats WHERE document_id = ?", (document_id,)
-                )
-                cursor.execute("DELETE FROM documents WHERE id = ?", (document_id,))
-                conn.commit()
+                session.delete(document)
         except Exception as e:
             print(f"Error deleting document from database: {e}")
-
-    execute_db_operation(_delete)
+            raise
 
 
 # Initialize database when module is imported
