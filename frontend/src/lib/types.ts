@@ -11,14 +11,6 @@ export interface Document {
     display_name: string;
 }
 
-export interface PdfContextType {
-    currentPdfName: string | null;
-    availableDocuments: Document[];
-    isLoadingDocuments: boolean;
-    setCurrentPdfName: (pdfName: string | null) => void;
-    refreshDocuments: () => Promise<void>;
-}
-
 export interface PdfProviderProps {
     children: React.ReactNode;
 }
@@ -62,6 +54,14 @@ export interface RegisterCredentials {
 export interface AuthToken {
     access_token: string;
     token_type: string;
+}
+
+export interface PdfContextType {
+    currentPdfName: string | null;
+    availableDocuments: Document[];
+    isLoadingDocuments: boolean;
+    setCurrentPdfName: (pdfName: string | null) => void;
+    refreshDocuments: () => Promise<void>;
 }
 
 export interface AuthContextType {

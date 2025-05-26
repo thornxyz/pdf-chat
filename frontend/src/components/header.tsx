@@ -41,7 +41,6 @@ function Header() {
 
   const handleDeleteDocument = async () => {
     if (!currentPdfName) return;
-
     if (
       window.confirm(`Are you sure you want to delete "${currentPdfName}"?`)
     ) {
@@ -97,6 +96,7 @@ function Header() {
       alert("Please upload a valid PDF file!");
     }
   };
+
   const handleDocumentSelect = (selected: DocumentSelectOption | null) => {
     if (selected) {
       setCurrentPdfName(selected.value);
@@ -189,7 +189,7 @@ function Header() {
               }),
             }}
           />
-        </div>{" "}
+        </div>
         <button
           onClick={handleButtonClick}
           disabled={isUploading}

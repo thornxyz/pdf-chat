@@ -49,7 +49,6 @@ function Chat() {
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
-        // Show welcome message if there's an error loading history
         const welcomeMessage: Message = {
           sender: "bot",
           text: `Hello! I'm ready to help you with **${currentPdfName}**. Feel free to ask me anything about this document - I can answer questions, summarize content, or help you find specific information.`,

@@ -4,8 +4,8 @@ import {
   User,
   LoginCredentials,
   RegisterCredentials,
+  AuthContext,
 } from "../lib/types";
-import { AuthContext } from "../lib/contexts";
 import { authApi } from "../lib/api";
 
 interface AuthProviderProps {
