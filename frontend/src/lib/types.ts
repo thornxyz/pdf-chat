@@ -56,6 +56,11 @@ export interface AuthToken {
     token_type: string;
 }
 
+export interface SidebarProps {
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+}
+
 export interface PdfContextType {
     currentPdfName: string | null;
     availableDocuments: Document[];

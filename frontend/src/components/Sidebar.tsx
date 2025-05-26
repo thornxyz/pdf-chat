@@ -6,13 +6,8 @@ import { FiLogOut, FiUser } from "react-icons/fi";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
 import { usePdfContext } from "../hooks/usePdfContext";
 import { useAuth } from "../hooks/useAuth";
-import { UploadResponse } from "../lib/types";
+import { UploadResponse, SidebarProps } from "../lib/types";
 import api from "../lib/api";
-
-interface SidebarProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-}
 
 function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const {
@@ -112,12 +107,15 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <img src="/Logo.svg" width={80} alt="Logo" />
+            <div className="flex items-center gap-4">
+              <img src="/vite.svg" width={50} alt="Logo" />
+              <div className="text-2xl font-semibold">ChatPDF</div>
+            </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="md:hidden text-gray-500 hover:text-gray-700"
+              className="md:hidden hover:text-gray-700"
             >
-              <ImCross size={10} />
+              <ImCross size={15} />
             </button>
           </div>
         </div>
@@ -182,16 +180,18 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* User Section */}
         <div className="p-4 border-t border-gray-200 mt-auto">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiUser size={16} className="text-gray-600" />
-              <span className="text-sm text-gray-700">{user?.username}</span>
+            <div>
+              <FiUser size={22} />
+            </div>
+            <div className="text-sm truncate px-2 text-gray-700">
+              Hello, {user?.username}
             </div>
             <button
               onClick={logout}
-              className="text-gray-500 hover:text-red-600 transition-colors"
+              className="hover:text-red-600 transition-colors"
               title="Logout"
             >
-              <FiLogOut size={16} />
+              <FiLogOut size={22} />
             </button>
           </div>
         </div>

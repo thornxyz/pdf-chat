@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { LoginCredentials, RegisterCredentials } from "../lib/types";
 
-const Auth: React.FC = () => {
+const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [credentials, setCredentials] = useState({
     username: "",
@@ -49,25 +49,56 @@ const Auth: React.FC = () => {
     setError(null);
     setCredentials({ username: "", password: "" });
   };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isLogin ? "Sign in to your account" : "Create a new account"}
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <img
+              src="/vite.svg"
+              width={60}
+              alt="ChatPDF Logo"
+              className="drop-shadow-sm"
+            />
+            <div className="text-4xl font-bold text-gray-800">ChatPDF</div>
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-700">
+            {isLogin ? "Welcome back!" : "Join ChatPDF"}
           </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <p className="mt-2 text-sm text-gray-600">
+            {isLogin
+              ? "Sign in to continue chatting with your PDFs"
+              : "Create an account to start chatting with PDFs"}
+          </p>
+        </div>{" "}
+        <form
+          className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg border border-gray-100"
+          onSubmit={handleSubmit}
+        >
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
+            <div className="rounded-lg bg-red-50 p-4 border border-red-200">
+              <div className="text-sm text-red-700 flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {error}
+              </div>
             </div>
-          )}
-
-          <div className="rounded-md shadow-sm -space-y-px">
+          )}{" "}
+          <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="sr-only">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Username
               </label>
               <input
@@ -75,14 +106,17 @@ const Auth: React.FC = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
+                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
+                placeholder="Enter your username"
                 value={credentials.username}
                 onChange={handleInputChange}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Password
               </label>
               <input
@@ -90,35 +124,36 @@ const Auth: React.FC = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
+                placeholder="Enter your password"
                 value={credentials.password}
                 onChange={handleInputChange}
               />
             </div>
-          </div>
-
+          </div>{" "}
           <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Processing...</span>
+                </div>
               ) : isLogin ? (
                 "Sign in"
               ) : (
-                "Sign up"
+                "Create account"
               )}
             </button>
           </div>
-
-          <div className="text-center">
+          <div className="text-center pt-4 border-t border-gray-200">
             <button
               type="button"
               onClick={toggleMode}
-              className="text-indigo-600 hover:text-indigo-500 text-sm font-medium"
+              className="text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors duration-200 hover:underline"
             >
               {isLogin
                 ? "Don't have an account? Sign up"

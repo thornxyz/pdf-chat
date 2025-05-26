@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { IoMdSend } from "react-icons/io";
 import { MdDescription } from "react-icons/md";
+import { FiUser } from "react-icons/fi";
 import ReactMarkdown from "react-markdown";
 import { usePdfContext } from "../hooks/usePdfContext";
 import { Message, ChatHistoryEntry, AskResponse } from "../lib/types";
@@ -127,8 +128,8 @@ function Chat() {
                 className="flex items-start gap-1.5 sm:gap-4 px-1 sm:px-6"
               >
                 {msg.sender === "user" ? (
-                  <>
-                    <img src="/user.svg" className="mt-2.5" width={30} />
+                  <div className="flex items-center gap-4">
+                    <FiUser size={28} className="text-gray-800 mt-2" />
                     <div className="font-semibold mt-2 text-gray-800">
                       {msg.text}
                       <div className="text-xs text-gray-500 self-end">
@@ -143,7 +144,7 @@ function Chat() {
                         })}
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <>
                     <img src="/vite.svg" width={30} />
@@ -154,7 +155,7 @@ function Chat() {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })}
+                        })}{" "}
                         {new Date(msg.timestamp).toLocaleTimeString(undefined, {
                           hour: "2-digit",
                           minute: "2-digit",
