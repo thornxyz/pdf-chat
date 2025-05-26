@@ -9,12 +9,10 @@ import database
 import os
 import traceback
 from datetime import timedelta
-
-# Import authentication modules
 from auth import (
     authenticate_user,
     create_access_token,
-    get_current_active_user,
+    get_current_user,
     Token,
     User,
     UserCreate,
@@ -26,7 +24,7 @@ app = FastAPI(title="PDF-Chat API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,7 +34,6 @@ app.add_middleware(
 # Authentication routes
 @app.post("/auth/register", response_model=User)
 async def register(user_create: UserCreate):
-    """Register a new user."""
     try:
         user = create_user(user_create)
         return user
@@ -50,7 +47,6 @@ async def register(user_create: UserCreate):
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
-    """Authenticate user and return access token."""
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -67,9 +63,8 @@ async def login_for_access_token(
 
 @app.get("/auth/me", response_model=User)
 async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
-    """Get current user information."""
     return current_user
 
 
@@ -81,7 +76,7 @@ class Question(BaseModel):
 # Upload a PDF file, save it to disk, store in database, and process for vector search
 @app.post("/upload/")
 async def upload_pdf(
-    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
+    file: UploadFile = File(...), current_user: User = Depends(get_current_user)
 ):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
@@ -134,9 +129,7 @@ async def upload_pdf(
 
 # Process a question against a specific PDF using vector search and AI
 @app.post("/ask/")
-async def ask_question(
-    query: Question, current_user: User = Depends(get_current_active_user)
-):
+async def ask_question(query: Question, current_user: User = Depends(get_current_user)):
     try:
         # Check if user owns this document
         if not database.check_document_ownership(query.pdf_name, current_user.id):
@@ -164,7 +157,7 @@ async def ask_question(
 # Get list of all uploaded documents from database
 @app.get("/documents/")
 async def list_documents(
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_user),
 ) -> List[Dict]:
     documents = database.get_all_documents(current_user.id)
     # Return both safe filename and original filename for display
@@ -177,7 +170,7 @@ async def list_documents(
 # Get chat history for a specific PDF document
 @app.get("/chat-history/{pdf_name}")
 async def get_chat_history(
-    pdf_name: str, current_user: User = Depends(get_current_active_user)
+    pdf_name: str, current_user: User = Depends(get_current_user)
 ) -> List[Dict]:
     try:
         # URL decode the pdf_name parameter
@@ -201,7 +194,7 @@ async def get_chat_history(
 # Delete a PDF document and all associated data
 @app.delete("/documents/{pdf_name}")
 async def delete_document(
-    pdf_name: str, current_user: User = Depends(get_current_active_user)
+    pdf_name: str, current_user: User = Depends(get_current_user)
 ):
     try:
         import urllib.parse

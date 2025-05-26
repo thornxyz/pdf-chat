@@ -2,26 +2,24 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 import os
 from dotenv import load_dotenv
-
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
-
 from database import get_db_session
 from models import User as UserModel
 
 load_dotenv()
 
 # Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"])
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -40,7 +38,6 @@ class TokenData(BaseModel):
 class User(BaseModel):
     id: int
     username: str
-    disabled: bool = False
 
     class Config:
         from_attributes = True
@@ -57,31 +54,26 @@ class UserInDB(User):
 
 # Utility functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
     return pwd_context.hash(password)
 
 
 def get_user_by_username(username: str) -> Optional[UserInDB]:
-    """Get user by username from database."""
     with get_db_session() as session:
         user = session.query(UserModel).filter(UserModel.username == username).first()
         if user:
             return UserInDB(
                 id=user.id,
                 username=user.username,
-                disabled=user.disabled,
                 hashed_password=user.hashed_password,
             )
         return None
 
 
 def create_user(user_create: UserCreate) -> User:
-    """Create a new user in the database."""
     with get_db_session() as session:
         # Check if user already exists
         if (
@@ -89,9 +81,9 @@ def create_user(user_create: UserCreate) -> User:
             .filter(UserModel.username == user_create.username)
             .first()
         ):
-            raise HTTPException(status_code=400, detail="Username already registered")
-
-        # Create new user
+            raise HTTPException(
+                status_code=400, detail="Username already registered"
+            )  # Create new user
         hashed_password = get_password_hash(user_create.password)
         db_user = UserModel(
             username=user_create.username,
@@ -103,12 +95,10 @@ def create_user(user_create: UserCreate) -> User:
         return User(
             id=db_user.id,
             username=db_user.username,
-            disabled=db_user.disabled,
         )
 
 
 def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
-    """Authenticate a user with username and password."""
     user = get_user_by_username(username)
     if not user:
         return None
@@ -118,7 +108,6 @@ def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -133,7 +122,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
-    """Get current user from JWT token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -156,14 +144,4 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     return User(
         id=user.id,
         username=user.username,
-        disabled=user.disabled,
     )
-
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> User:
-    """Get current active user (not disabled)."""
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user

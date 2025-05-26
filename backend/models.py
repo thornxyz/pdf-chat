@@ -5,7 +5,6 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
-    Boolean,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -20,7 +19,6 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
-    disabled = Column(Boolean, default=False, nullable=False)
 
     # Relationship to documents (users can own documents)
     documents = relationship(
