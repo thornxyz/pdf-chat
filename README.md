@@ -32,41 +32,35 @@ A full-stack application that allows users to upload PDF documents and have inte
 
 ### 1. Clone the Repository
 
-```bash
+```powershell
 git clone https://github.com/thornxyz/pdf-chat.git
 cd pdf-chat
 ```
 
 ### 2. Backend Setup
 
-```bash
+```powershell
 # Navigate to backend directory
 cd backend
 
 # Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+# Activate virtual environment (Windows PowerShell)
+.\venv\Scripts\Activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Set up environment variables
-# Create a .env file in the backend directory with:
-# GOOGLE_API_KEY=your_google_ai_api_key_here
-# SECRET_KEY=your_jwt_secret_key_here
-
-# Start the backend server
-python api.py
 ```
 
-### 3. Environment setup
+> **Note for other platforms:**
+>
+> - **macOS/Linux**: `source venv/bin/activate`
+> - **Windows CMD**: `venv\Scripts\activate.bat`
 
-Create a `.env` file inside the `backend` directory with the following content:
+### 3. Environment Configuration
+
+Create a `.env` file inside the `backend` directory and add the following:
 
 ```env
 GOOGLE_API_KEY=your_google_ai_api_key_here
@@ -75,7 +69,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-To generate a secure `SECRET_KEY`, you can run this command in your terminal:
+#### To generate a Secure Secret Key using bash run:
 
 ```bash
 openssl rand -hex 32
@@ -83,22 +77,55 @@ openssl rand -hex 32
 
 ### 4. Frontend Setup
 
-```bash
+```powershell
 # Navigate to frontend directory (from project root)
-cd frontend
+cd ..\frontend
 
 # Install dependencies
 npm install
+```
+
+### 5. Run the Application
+
+Open **two separate terminal windows** and run:
+
+**Terminal 1 - Backend Server:**
+
+```powershell
+# Navigate to backend directory
+cd backend
+
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Start the backend server
+python api.py
+```
+
+**Terminal 2 - Frontend Server:**
+
+```powershell
+# Navigate to frontend directory
+cd frontend
 
 # Start the development server
 npm run dev
 ```
 
-### 5. Access the Application
+### 6. Access the Application
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
+Once both servers are running:
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
+### 7. First Time Setup
+
+1. Open http://localhost:5173 in your browser
+2. Click "Register" to create a new account
+3. Upload a PDF document
+4. Start asking questions about your PDF!
 
 ## 📝 API Endpoints
 
