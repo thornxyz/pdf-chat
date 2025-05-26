@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { IoMdSend } from "react-icons/io";
+import { MdDescription } from "react-icons/md";
 import ReactMarkdown from "react-markdown";
 import { usePdfContext } from "../hooks/usePdfContext";
 import { Message, ChatHistoryEntry, AskResponse } from "../lib/types";
@@ -107,59 +108,70 @@ function Chat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
   return (
-    <div className="flex text-sm md:text-base items-center flex-col h-[91vh] md:h-[87vh]">
-      <div className="w-screen flex-1 overflow-y-auto px-4 py-6 space-y-6">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className="flex items-start gap-1.5 sm:gap-4 px-1 sm:px-6"
-          >
-            {msg.sender === "user" ? (
-              <>
-                <img src="/user.svg" className="mt-2.5" width={30} />
-                <div className="font-semibold mt-2 text-gray-800">
-                  {msg.text}
-                  <div className="text-xs text-gray-500 self-end">
-                    {new Date(msg.timestamp).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}{" "}
-                    {new Date(msg.timestamp).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
+    <div className="flex text-sm md:text-base items-center flex-col h-screen">
+      <div className="w-full flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        {!currentPdfName ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-gray-500">
+              <MdDescription size={48} className="mx-auto mb-4 text-gray-400" />
+              <p className="text-lg mb-2">Welcome to PDF Chat</p>
+              <p>Upload a PDF from the sidebar to start chatting!</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-1.5 sm:gap-4 px-1 sm:px-6"
+              >
+                {msg.sender === "user" ? (
+                  <>
+                    <img src="/user.svg" className="mt-2.5" width={30} />
+                    <div className="font-semibold mt-2 text-gray-800">
+                      {msg.text}
+                      <div className="text-xs text-gray-500 self-end">
+                        {new Date(msg.timestamp).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        {new Date(msg.timestamp).toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <img src="/vite.svg" width={30} />
+                    <div className="text-gray-950 prose prose-sm sm:prose !max-w-5xl flex flex-col">
+                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      <div className="text-xs text-gray-500 self-end">
+                        {new Date(msg.timestamp).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                        {new Date(msg.timestamp).toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex items-start gap-4 px-1 sm:px-6">
                 <img src="/vite.svg" width={30} />
-                <div className="text-gray-950 prose prose-sm sm:prose !max-w-5xl flex flex-col">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
-                  <div className="text-xs text-gray-500 self-end">
-                    {new Date(msg.timestamp).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    {new Date(msg.timestamp).toLocaleTimeString(undefined, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-              </>
+                <div className=" text-gray-800">Thinking...</div>
+              </div>
             )}
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex items-start gap-4 px-1 sm:px-6">
-            <img src="/vite.svg" width={30} />
-            <div className=" text-gray-800">Thinking...</div>
-          </div>
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>

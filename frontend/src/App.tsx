@@ -1,5 +1,6 @@
+import { useState } from "react";
 import Chat from "./components/chat";
-import Header from "./components/header";
+import Sidebar from "./components/Sidebar";
 import Auth from "./components/Auth";
 import { PdfProvider } from "./contexts/PdfContext";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -7,6 +8,7 @@ import { useAuth } from "./hooks/useAuth";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -22,9 +24,11 @@ function AppContent() {
 
   return (
     <PdfProvider>
-      <div className="bg-gray-100 min-h-screen flex flex-col">
-        <Header />
-        <Chat />
+      <div className="bg-gray-100 min-h-screen flex">
+        <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+        <div className="flex-1 flex flex-col md:ml-0">
+          <Chat />
+        </div>
       </div>
     </PdfProvider>
   );
