@@ -32,14 +32,14 @@ A full-stack application that allows users to upload PDF documents and have inte
 
 ### 1. Clone the Repository
 
-```powershell
+```bash
 git clone https://github.com/thornxyz/pdf-chat.git
 cd pdf-chat
 ```
 
 ### 2. Backend Setup
 
-```powershell
+```bash
 # Navigate to backend directory
 cd backend
 
@@ -77,7 +77,7 @@ openssl rand -hex 32
 
 ### 4. Frontend Setup
 
-```powershell
+```bash
 # Navigate to frontend directory (from project root)
 cd ..\frontend
 
@@ -91,7 +91,7 @@ Open **two separate terminal windows** and run:
 
 **Terminal 1 - Backend Server:**
 
-```powershell
+```bash
 # Navigate to backend directory
 cd backend
 
@@ -104,7 +104,7 @@ python api.py
 
 **Terminal 2 - Frontend Server:**
 
-```powershell
+```bash
 # Navigate to frontend directory
 cd frontend
 
