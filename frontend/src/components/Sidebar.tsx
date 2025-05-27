@@ -125,12 +125,35 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <button
             onClick={handleButtonClick}
             disabled={isUploading}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-green-500 transition-colors disabled:opacity-50 text-gray-700"
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all duration-300 ${
+              isUploading
+                ? "bg-green-100 border-green-400 text-green-800 shadow-md"
+                : "border-gray-300 hover:bg-gray-50 hover:border-green-500 text-gray-700"
+            }`}
           >
-            <CiCirclePlus size={20} />
-            <span className="text-sm">
+            {isUploading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-green-600 border-t-transparent"></div>
+            ) : (
+              <CiCirclePlus size={20} />
+            )}
+            <span className="text-sm font-medium">
               {isUploading ? "Uploading..." : "Upload PDF"}
             </span>
+            {isUploading && (
+              <div className="ml-auto">
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-green-600 rounded-full animate-bounce"></div>
+                  <div
+                    className="w-1 h-1 bg-green-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-1 h-1 bg-green-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+              </div>
+            )}
           </button>
         </div>
 

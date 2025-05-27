@@ -9,6 +9,7 @@ from typing import List
 import shutil
 from dotenv import load_dotenv
 from database import save_chat_history
+import time
 
 load_dotenv()
 
@@ -94,21 +95,42 @@ def process_pdf(file_name: str) -> FAISS:
         if not documents:
             raise ValueError("No text content could be extracted from the PDF")
 
-        # Split documents into chunks
+        # Large chunk size to reduce total number of requests
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000, chunk_overlap=300, add_start_index=True
+            chunk_size=7000, chunk_overlap=100, add_start_index=True
         )
         chunked_docs = text_splitter.split_documents(documents)
 
         if not chunked_docs:
             raise ValueError("No text chunks were generated from the PDF")
 
-        # Create and save vector store
-        db = FAISS.from_documents(chunked_docs, embeddings)
+        db = None
+        batch_size = 5  # 5 requests per minute allowed
+        batch = []
+
+        for i, doc in enumerate(chunked_docs, 1):
+            batch.append(doc)
+
+            # When batch is full or it's the last doc
+            if len(batch) == batch_size or i == len(chunked_docs):
+                print(f"Embedding batch: docs {i - len(batch) + 1} to {i}")
+                batch_db = FAISS.from_documents(batch, embeddings)
+
+                if db is None:
+                    db = batch_db
+                else:
+                    db.merge_from(batch_db)
+
+                batch = []  # Reset batch
+
+                if i != len(chunked_docs):  # Avoid sleep after final batch
+                    print("Sleeping for 60 seconds to respect rate limits...")
+                    time.sleep(60)
+
         db.save_local(vectorstore_path)
         return db
+
     except Exception as e:
-        # Clean up on failure
         if os.path.exists(vectorstore_path):
             shutil.rmtree(vectorstore_path)
         raise RuntimeError(f"Failed to process PDF: {str(e)}")
