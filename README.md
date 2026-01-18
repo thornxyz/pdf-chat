@@ -1,66 +1,68 @@
-# Chat-PDF
+# PDF-Chat with FHE-RAG
 
-A full-stack application that allows users to upload PDF documents and have intelligent conversations with their content using AI. Built with React/TypeScript frontend and FastAPI Python backend.
+A privacy-preserving PDF chat application using **Fully Homomorphic Encryption (FHE)** for secure similarity search. Chat with your documents without exposing your data!
+
+## 🔐 Privacy-First Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client["Frontend (React)"]
+        A[Upload PDF] --> B[Send to Backend]
+        H[Ask Question] --> I[Send Query]
+    end
+    
+    subgraph Backend["Backend (FastAPI + FHE)"]
+        B --> C[Extract Text]
+        C --> D[Google Embeddings API]
+        D --> E["Reduce Dims (768→32)"]
+        E --> F["FHE Encrypt (Concrete)"]
+        F --> G[(SQLite + Encrypted Chunks)]
+        
+        I --> J[Embed Query]
+        J --> K[FHE Encrypt Query]
+        K --> L["Homomorphic Dot Product"]
+        G --> L
+        L --> M[Decrypt Scores]
+        M --> N[Retrieve Top-K Chunks]
+        N --> O[Gemini LLM Answer]
+    end
+    
+    O --> P[Display Answer]
+```
 
 ## 🛠️ Tech Stack
 
-### Frontend
-
-- **React 19** with TypeScript
-- **Vite** for build tooling
-- **Tailwind CSS** for styling
-- **Axios** for API communication
-- **React Markdown** for message rendering
-
-### Backend
-
-- **FastAPI** for REST API
-- **SQLAlchemy** for database ORM
-- **LangChain** for AI integration
-- **Google Gemini AI** for language model
-- **FAISS** for vector storage
-- **PyMuPDF** for PDF processing
-- **JWT** for authentication
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 19, TypeScript, Vite, Tailwind |
+| **Backend** | FastAPI, SQLAlchemy, PyMuPDF |
+| **FHE** | Concrete-Python (TFHE-rs) |
+| **Embeddings** | Google Gemini (`gemini-embedding-001`) |
+| **LLM** | Google Gemini Flash |
 
 ## 📋 Prerequisites
 
-- **Node.js** (v18 or higher)
-- **Python** (v3.8 or higher)
-- **Google AI API Key** (for Gemini integration)
+- **Python 3.11** (required for Concrete-Python)
+- **Node.js 18+** / **pnpm**
+- **Google AI API Key**
+- **Linux or macOS** (FHE library requirement)
 
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
+### 1. Clone & Setup Backend
 
 ```bash
 git clone https://github.com/thornxyz/pdf-chat.git
-cd pdf-chat
+cd pdf-chat/backend
+
+# Set Python version and install dependencies
+uv python pin 3.11
+uv sync
 ```
 
-### 2. Backend Setup
+### 2. Environment Configuration
 
-```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment (Windows PowerShell)
-.\venv\Scripts\Activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-> **Note for other platforms:**
->
-> - **macOS/Linux**: `source venv/bin/activate`
-> - **Windows CMD**: `venv\Scripts\activate.bat`
-
-### 3. Environment Configuration
-
-Create a `.env` file inside the `backend` directory and add the following:
+Create `backend/.env`:
 
 ```env
 GOOGLE_API_KEY=your_google_ai_api_key_here
@@ -69,79 +71,95 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-#### To generate a Secure Secret Key using bash run:
+### 3. Frontend Setup
 
 ```bash
-openssl rand -hex 32
-```
-
-### 4. Frontend Setup
-
-```bash
-# Navigate to frontend directory (from project root)
-cd ..\frontend
-
-# Install dependencies
-npm install
-```
-
-### 5. Run the Application
-
-Open **two separate terminal windows** and run:
-
-**Terminal 1 - Backend Server:**
-
-```bash
-# Navigate to backend directory
-cd backend
-
-# Activate virtual environment
-.\venv\Scripts\Activate.ps1
-
-# Start the backend server
-python api.py
-```
-
-**Terminal 2 - Frontend Server:**
-
-```bash
-# Navigate to frontend directory
 cd frontend
-
-# Start the development server
-npm run dev
+pnpm install
 ```
 
-### 6. Access the Application
+### 4. Run the Application
 
-Once both servers are running:
+**Terminal 1 - Backend:**
+```bash
+cd backend && uv run main.py
+```
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
+**Terminal 2 - Frontend:**
+```bash
+cd frontend && pnpm dev
+```
 
-### 7. First Time Setup
+### 5. Access
 
-1. Open http://localhost:5173 in your browser
-2. Click "Register" to create a new account
-3. Upload a PDF document
-4. Start asking questions about your PDF!
+- **App**: http://localhost:5173
+- **API Docs**: http://localhost:8000/docs
+
+## 🔒 FHE Details
+
+| Property | Value |
+|----------|-------|
+| **Scheme** | TFHE (via Concrete-Python) |
+| **Embedding Reduction** | 768 → 32 dimensions |
+| **Quantization** | 4-bit integers |
+| **Ciphertext Size** | ~1 MB per chunk |
+| **First Query** | ~10s (circuit compilation) |
+| **Subsequent Queries** | ~100-500ms per similarity |
+
+### Verify FHE is Working
+
+```bash
+cd backend && uv run python -c "
+import fhe_service
+ctx = fhe_service.FHEContext()
+enc = ctx.encrypt_vector([0.1] * 768)
+print(f'Encrypted size: {len(enc):,} bytes')  # Should be ~1MB
+"
+```
 
 ## 📝 API Endpoints
 
 ### Authentication
+- `POST /auth/register` - Register user
+- `POST /auth/token` - Login
+- `GET /auth/me` - Current user
 
-- `POST /auth/register` - User registration
-- `POST /auth/token` - User login (returns JWT access token)
-- `GET /auth/me` - Get current user information
+### FHE Keys
+- `POST /fhe/generate-keys` - Generate keypair
+- `POST /fhe/upload-key` - Store public key
 
-### PDF Management
+### Documents
+- `POST /upload/` - Upload PDF (encrypts embeddings)
+- `GET /documents/` - List PDFs
+- `DELETE /documents/{name}` - Delete PDF
 
-- `POST /upload/` - Upload PDF document
-- `GET /documents/` - List user's uploaded PDFs
-- `DELETE /documents/{pdf_name}` - Delete a specific PDF document
+### Chat
+- `POST /ask/` - Query PDF (FHE similarity search)
+- `GET /chat-history/{name}` - Chat history
 
-### Chat & Query
+## 📁 Project Structure
 
-- `POST /ask/` - Ask a question about a specific PDF document
-- `GET /chat-history/{pdf_name}` - Get chat history for a specific PDF document
+```
+pdf-chat/
+├── backend/
+│   ├── api.py              # FastAPI endpoints
+│   ├── fhe_service.py      # Concrete-Python FHE
+│   ├── embedding_service.py # Google embeddings
+│   ├── database.py         # SQLAlchemy ORM
+│   └── models.py           # DB schemas
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── lib/api.ts      # API client
+│   │   └── contexts/       # Auth & PDF context
+│   └── package.json
+└── data/
+    ├── database.db         # SQLite
+    └── fhe/keys/           # Cached FHE keys
+```
+
+## ⚠️ Notes
+
+- **First request is slow** (~10s) due to FHE circuit compilation
+- **Keys are cached** in `data/fhe/keys/` for faster restarts
+- **Windows**: Use WSL for Concrete-Python compatibility
