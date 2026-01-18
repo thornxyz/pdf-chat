@@ -55,8 +55,7 @@ flowchart TB
 git clone https://github.com/thornxyz/pdf-chat.git
 cd pdf-chat/backend
 
-# Set Python version and install dependencies
-uv python pin 3.11
+# Install dependencies
 uv sync
 ```
 
@@ -106,17 +105,6 @@ cd frontend && pnpm dev
 | **First Query** | ~10s (circuit compilation) |
 | **Subsequent Queries** | ~100-500ms per similarity |
 
-### Verify FHE is Working
-
-```bash
-cd backend && uv run python -c "
-import fhe_service
-ctx = fhe_service.FHEContext()
-enc = ctx.encrypt_vector([0.1] * 768)
-print(f'Encrypted size: {len(enc):,} bytes')  # Should be ~1MB
-"
-```
-
 ## 📝 API Endpoints
 
 ### Authentication
@@ -136,30 +124,3 @@ print(f'Encrypted size: {len(enc):,} bytes')  # Should be ~1MB
 ### Chat
 - `POST /ask/` - Query PDF (FHE similarity search)
 - `GET /chat-history/{name}` - Chat history
-
-## 📁 Project Structure
-
-```
-pdf-chat/
-├── backend/
-│   ├── api.py              # FastAPI endpoints
-│   ├── fhe_service.py      # Concrete-Python FHE
-│   ├── embedding_service.py # Google embeddings
-│   ├── database.py         # SQLAlchemy ORM
-│   └── models.py           # DB schemas
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── lib/api.ts      # API client
-│   │   └── contexts/       # Auth & PDF context
-│   └── package.json
-└── data/
-    ├── database.db         # SQLite
-    └── fhe/keys/           # Cached FHE keys
-```
-
-## ⚠️ Notes
-
-- **First request is slow** (~10s) due to FHE circuit compilation
-- **Keys are cached** in `data/fhe/keys/` for faster restarts
-- **Windows**: Use WSL for Concrete-Python compatibility
