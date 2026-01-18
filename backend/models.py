@@ -5,6 +5,8 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
+    LargeBinary,
+    Float,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -19,6 +21,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
+    fhe_public_key = Column(LargeBinary, nullable=True)  # FHE public key for encryption
 
     # Relationship to documents (users can own documents)
     documents = relationship(
@@ -39,6 +42,24 @@ class Document(Base):
     chats = relationship(
         "Chat", back_populates="document", cascade="all, delete-orphan"
     )
+    chunks = relationship(
+        "EncryptedChunk", back_populates="document", cascade="all, delete-orphan"
+    )
+
+
+class EncryptedChunk(Base):
+    """Stores encrypted document chunks with their FHE-encrypted embeddings"""
+    __tablename__ = "encrypted_chunks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    chunk_text = Column(Text, nullable=False)  # Plaintext chunk for retrieval
+    encrypted_embedding = Column(LargeBinary, nullable=True)  # TFHE ciphertext
+    embedding_norm = Column(Float, nullable=True)  # Pre-computed L2 norm
+
+    # Relationship
+    document = relationship("Document", back_populates="chunks")
 
 
 class Chat(Base):
@@ -52,3 +73,4 @@ class Chat(Base):
 
     # Relationship to document
     document = relationship("Document", back_populates="chats")
+

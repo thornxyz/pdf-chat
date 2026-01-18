@@ -26,7 +26,7 @@ for directory in [PDFS_DIR, VECTORSTORES_DIR]:
 # Initialize Google Gemini API
 try:
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
-    model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+    model = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
 except Exception as e:
     raise RuntimeError(f"Failed to initialize Google Gemini API: {str(e)}")
 
