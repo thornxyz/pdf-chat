@@ -301,3 +301,57 @@ def quantize_embedding(embedding: List[float]) -> Tuple[np.ndarray, float]:
     fhe_search = get_fhe_search()
     reduced = fhe_search.reduce_dimensions(embedding)
     return fhe_search.quantize(reduced)
+
+
+def get_reduced_embedding(embedding: List[float]) -> bytes:
+    """
+    Get reduced-dimension embedding as bytes for storage.
+    Used for plaintext comparison in hybrid eval.
+    """
+    fhe_search = get_fhe_search()
+    reduced = fhe_search.reduce_dimensions(embedding)
+    return pickle.dumps(reduced.astype(np.float32))
+
+
+def compute_plaintext_similarity(
+    reduced_embeddings: List[bytes],
+    query_embedding: List[float],
+) -> List[float]:
+    """
+    Compute similarity using plaintext reduced-dim embeddings.
+    Used for comparison with FHE results in hybrid eval.
+
+    Args:
+        reduced_embeddings: List of pickled 32-dim numpy arrays
+        query_embedding: Full 768-dim query embedding
+
+    Returns:
+        List of similarity scores (dot products normalized)
+    """
+    fhe_search = get_fhe_search()
+
+    # Reduce query to same dimension
+    query_reduced = fhe_search.reduce_dimensions(query_embedding)
+    query_norm = np.linalg.norm(query_reduced) + 1e-10
+    query_normalized = query_reduced / query_norm
+
+    scores = []
+    for reduced_bytes in reduced_embeddings:
+        if reduced_bytes is None:
+            scores.append(0.0)
+            continue
+
+        doc_reduced = pickle.loads(reduced_bytes)
+        doc_norm = np.linalg.norm(doc_reduced) + 1e-10
+        doc_normalized = doc_reduced / doc_norm
+
+        # Cosine similarity
+        score = float(np.dot(doc_normalized, query_normalized))
+        scores.append(score)
+
+    return scores
+
+
+# Export constants for audit logging
+FHE_REDUCED_DIM = REDUCED_DIM
+FHE_QUANTIZATION_BITS = QUANTIZATION_BITS

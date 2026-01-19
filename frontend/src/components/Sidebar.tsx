@@ -2,12 +2,14 @@ import { useRef, useState } from "react";
 import { CiCirclePlus } from "react-icons/ci";
 import { MdDelete, MdDescription } from "react-icons/md";
 import { ImCross } from "react-icons/im";
-import { FiLogOut, FiUser } from "react-icons/fi";
+import { FiLogOut, FiUser, FiActivity, FiShield } from "react-icons/fi";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
 import { usePdfContext } from "../hooks/usePdfContext";
 import { useAuth } from "../hooks/useAuth";
 import { UploadResponse, SidebarProps } from "../lib/types";
 import api from "../lib/api";
+import EvalStats from "./EvalStats";
+import PrivacyReport from "./PrivacyReport";
 
 function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const {
@@ -22,6 +24,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEvalStats, setShowEvalStats] = useState(false);
+  const [showPrivacyReport, setShowPrivacyReport] = useState(false);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -130,8 +134,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             onClick={handleButtonClick}
             disabled={isUploading}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300 shadow-sm ${isUploading
-                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                : "border-slate-200 hover:bg-white hover:border-emerald-300 text-slate-700"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "border-slate-200 hover:bg-white hover:border-emerald-300 text-slate-700"
               }`}
           >
             {isUploading ? (
@@ -170,8 +174,8 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               <div
                 key={doc.filename}
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPdfName === doc.filename
-                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-sm"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-sm"
+                  : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm"
                   }`}
                 onClick={() => handleDocumentSelect(doc.filename)}
               >
@@ -201,6 +205,31 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             ))}
           </div>
         </div>
+
+        {/* Document Actions (when document selected) */}
+        {currentPdfName && (
+          <div className="px-5 pb-4">
+            <div className="text-[11px] font-semibold text-slate-500 mb-3 uppercase tracking-[0.2em]">
+              Document Actions
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowEvalStats(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all"
+              >
+                <FiActivity size={16} />
+                <span className="text-sm font-medium">📊 Eval Stats</span>
+              </button>
+              <button
+                onClick={() => setShowPrivacyReport(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all"
+              >
+                <FiShield size={16} />
+                <span className="text-sm font-medium">🔒 Privacy Report</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* User Section */}
         <div className="p-5 border-t border-slate-200/70 mt-auto">
@@ -241,6 +270,24 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       >
         <HiOutlineMenuAlt2 size={15} />
       </button>
+
+      {/* Eval Stats Modal */}
+      {currentPdfName && (
+        <EvalStats
+          pdfName={currentPdfName}
+          isOpen={showEvalStats}
+          onClose={() => setShowEvalStats(false)}
+        />
+      )}
+
+      {/* Privacy Report Modal */}
+      {currentPdfName && (
+        <PrivacyReport
+          pdfName={currentPdfName}
+          isOpen={showPrivacyReport}
+          onClose={() => setShowPrivacyReport(false)}
+        />
+      )}
     </>
   );
 }

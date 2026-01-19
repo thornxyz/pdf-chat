@@ -21,17 +21,8 @@ export interface ChatHistoryEntry {
     timestamp: string;
 }
 
-export interface DocumentSelectOption {
-    value: string;
-    label: string;
-}
-
 export interface UploadResponse {
     filename: string;
-}
-
-export interface AskResponse {
-    answer: string;
 }
 
 // Authentication types

@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from typing import Dict, List, Optional, cast
 from contextlib import contextmanager
 import os
-from models import Base, Document, Chat, User, EncryptedChunk
+from models import Base, Document, Chat, User, EncryptedChunk, EvalLog, PrivacyAudit
 
 os.makedirs("../data", exist_ok=True)
 
@@ -113,6 +113,7 @@ def insert_encrypted_chunk(
     chunk_text: str,
     encrypted_embedding: bytes,
     embedding_norm: float,
+    reduced_embedding: Optional[bytes] = None,
 ) -> None:
     """Store an encrypted document chunk with its FHE-encrypted embedding"""
     with get_db_session() as session:
@@ -122,6 +123,7 @@ def insert_encrypted_chunk(
             chunk_text=chunk_text,
             encrypted_embedding=encrypted_embedding,
             embedding_norm=embedding_norm,
+            reduced_embedding=reduced_embedding,
         )
         session.add(chunk)
 
@@ -142,6 +144,7 @@ def get_encrypted_chunks(document_id: int) -> List[Dict]:
                 "chunk_text": chunk.chunk_text,
                 "encrypted_embedding": chunk.encrypted_embedding,
                 "embedding_norm": chunk.embedding_norm,
+                "reduced_embedding": chunk.reduced_embedding,
             }
             for chunk in chunks
         ]
@@ -179,6 +182,109 @@ def load_chat_history(pdf_name: str) -> List[Dict]:
                 "answer": chat.answer,
             }
             for chat in chats
+        ]
+
+
+# ============== Evaluation Logs ==============
+
+
+def insert_eval_log(
+    document_id: int,
+    query_text: str,
+    fhe_overlap: float,
+    rank_correlation: Optional[float],
+    fhe_latency_ms: float,
+    plain_latency_ms: float,
+    top_k: int = 4,
+) -> None:
+    """Log FHE vs plaintext comparison metrics"""
+    with get_db_session() as session:
+        eval_log = EvalLog(
+            document_id=document_id,
+            query_text=query_text,
+            fhe_overlap=fhe_overlap,
+            rank_correlation=rank_correlation,
+            fhe_latency_ms=fhe_latency_ms,
+            plain_latency_ms=plain_latency_ms,
+            top_k=top_k,
+        )
+        session.add(eval_log)
+
+
+def get_eval_logs(document_id: int, limit: int = 100) -> List[EvalLog]:
+    """Get evaluation logs for a document"""
+    with get_db_session() as session:
+        logs = (
+            session.query(EvalLog)
+            .filter(EvalLog.document_id == document_id)
+            .order_by(EvalLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        # Detach from session to use outside context
+        return [
+            {
+                "id": log.id,
+                "query_text": log.query_text,
+                "fhe_overlap": log.fhe_overlap,
+                "rank_correlation": log.rank_correlation,
+                "fhe_latency_ms": log.fhe_latency_ms,
+                "plain_latency_ms": log.plain_latency_ms,
+                "top_k": log.top_k,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+            }
+            for log in logs
+        ]
+
+
+# ============== Privacy Audit Logs ==============
+
+
+def insert_privacy_audit(
+    document_id: int,
+    query_hash: str,
+    ciphertexts_touched: int,
+    homomorphic_ops: Optional[str],
+    reduced_dim: int,
+    quantization_bits: int,
+    decrypted_only: str,
+) -> None:
+    """Log privacy audit entry for FHE operation"""
+    with get_db_session() as session:
+        audit = PrivacyAudit(
+            document_id=document_id,
+            query_hash=query_hash,
+            ciphertexts_touched=ciphertexts_touched,
+            homomorphic_ops=homomorphic_ops,
+            reduced_dim=reduced_dim,
+            quantization_bits=quantization_bits,
+            decrypted_only=decrypted_only,
+        )
+        session.add(audit)
+
+
+def get_privacy_audits(document_id: int, limit: int = 100) -> List[Dict]:
+    """Get privacy audit logs for a document"""
+    with get_db_session() as session:
+        audits = (
+            session.query(PrivacyAudit)
+            .filter(PrivacyAudit.document_id == document_id)
+            .order_by(PrivacyAudit.timestamp.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": audit.id,
+                "query_hash": audit.query_hash,
+                "ciphertexts_touched": audit.ciphertexts_touched,
+                "homomorphic_ops": audit.homomorphic_ops,
+                "reduced_dim": audit.reduced_dim,
+                "quantization_bits": audit.quantization_bits,
+                "decrypted_only": audit.decrypted_only,
+                "timestamp": audit.timestamp.isoformat() if audit.timestamp else None,
+            }
+            for audit in audits
         ]
 
 

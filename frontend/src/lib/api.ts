@@ -46,5 +46,21 @@ export const authApi = {
     },
 };
 
+// Evaluation & Privacy API calls
+export const evalApi = {
+    getStats: async (pdfName: string) => {
+        const response = await api.get(`/eval/${encodeURIComponent(pdfName)}`);
+        return response.data;
+    },
+};
+
+export const privacyApi = {
+    getAuditReport: async (pdfName: string) => {
+        const response = await api.get(`/privacy/audit/${encodeURIComponent(pdfName)}`);
+        return response.data;
+    },
+};
+
 // Export the configured axios instance for other API calls
 export default api;
+
