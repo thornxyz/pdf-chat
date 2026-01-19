@@ -12,8 +12,11 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+        <div className="flex items-center gap-3 rounded-full bg-white/80 px-6 py-3 shadow-lg ring-1 ring-slate-200/60">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-600 border-t-transparent"></div>
+          <span className="text-sm font-medium text-slate-600">Loading workspace</span>
+        </div>
       </div>
     );
   }
@@ -24,7 +27,7 @@ function AppContent() {
 
   return (
     <PdfProvider>
-      <div className="bg-gray-100 min-h-screen flex">
+      <div className="min-h-screen flex bg-gradient-to-br from-slate-50 via-white to-indigo-50">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
         <div className="flex-1 flex flex-col md:ml-0">
           <Chat />

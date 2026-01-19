@@ -53,6 +53,7 @@ dependencies = [
     { name = "pymupdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
+    { name = "setuptools" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -70,6 +71,7 @@ requires-dist = [
     { name = "pymupdf", specifier = ">=1.26.7" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-multipart", specifier = ">=0.0.21" },
+    { name = "setuptools", specifier = ">=80.9.0" },
     { name = "sqlalchemy", specifier = ">=2.0.45" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]

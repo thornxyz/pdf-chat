@@ -95,25 +95,29 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-gray-300 opacity-20 z-40 md:hidden"
+          className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
       <div
-        className={`fixed left-0 top-0 h-screen bg-white text-gray-800 border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out z-50 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        } w-64 md:translate-x-0 md:relative md:z-auto md:h-screen flex flex-col`}
+        className={`fixed left-0 top-0 h-screen bg-white/80 text-slate-800 border-r border-slate-200/60 shadow-2xl backdrop-blur-xl transform transition-transform duration-300 ease-in-out z-50 ${isOpen ? "translate-x-0" : "-translate-x-full"
+          } w-72 md:translate-x-0 md:relative md:z-auto md:h-screen flex flex-col`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-5 border-b border-slate-200/70">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <img src="/vite.svg" width={50} alt="Logo" />
-              <div className="text-2xl font-semibold">ChatPDF</div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600/10">
+                <img src="/vite.svg" width={24} alt="Logo" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-slate-900">ChatPDF</div>
+                <div className="text-xs text-slate-500">Secure document chat</div>
+              </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="md:hidden hover:text-gray-700"
+              className="md:hidden rounded-full p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100"
             >
               <ImCross size={15} />
             </button>
@@ -121,34 +125,33 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
 
         {/* New Chat Button */}
-        <div className="p-4">
+        <div className="p-5">
           <button
             onClick={handleButtonClick}
             disabled={isUploading}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all duration-300 ${
-              isUploading
-                ? "bg-green-100 border-green-400 text-green-800 shadow-md"
-                : "border-gray-300 hover:bg-gray-50 hover:border-green-500 text-gray-700"
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300 shadow-sm ${isUploading
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "border-slate-200 hover:bg-white hover:border-emerald-300 text-slate-700"
+              }`}
           >
             {isUploading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-green-600 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-600 border-t-transparent"></div>
             ) : (
               <CiCirclePlus size={20} />
             )}
-            <span className="text-sm font-medium">
+            <span className="text-sm font-semibold">
               {isUploading ? "Uploading..." : "Upload PDF"}
             </span>
             {isUploading && (
               <div className="ml-auto">
                 <div className="flex space-x-1">
-                  <div className="w-1 h-1 bg-green-600 rounded-full animate-bounce"></div>
+                  <div className="w-1 h-1 bg-emerald-600 rounded-full animate-bounce"></div>
                   <div
-                    className="w-1 h-1 bg-green-600 rounded-full animate-bounce"
+                    className="w-1 h-1 bg-emerald-600 rounded-full animate-bounce"
                     style={{ animationDelay: "0.1s" }}
                   ></div>
                   <div
-                    className="w-1 h-1 bg-green-600 rounded-full animate-bounce"
+                    className="w-1 h-1 bg-emerald-600 rounded-full animate-bounce"
                     style={{ animationDelay: "0.2s" }}
                   ></div>
                 </div>
@@ -158,22 +161,21 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
 
         {/* Documents List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+        <div className="flex-1 overflow-y-auto px-5 pb-5 scrollbar-modern">
+          <div className="text-[11px] font-semibold text-slate-500 mb-3 uppercase tracking-[0.2em]">
             Documents
           </div>
           <div className="space-y-1">
             {availableDocuments.map((doc) => (
               <div
                 key={doc.filename}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  currentPdfName === doc.filename
-                    ? "bg-green-50 text-green-800 border border-green-200"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-                }`}
+                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${currentPdfName === doc.filename
+                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-sm"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                  }`}
                 onClick={() => handleDocumentSelect(doc.filename)}
               >
-                <MdDescription size={16} className="flex-shrink-0" />
+                <MdDescription size={18} className="flex-shrink-0 text-slate-400" />
                 <span
                   className="flex-1 text-sm truncate"
                   title={doc.display_name}
@@ -189,7 +191,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                       handleDeleteDocument(doc.filename);
                     }}
                     disabled={isDeleting}
-                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 transition-opacity disabled:opacity-50"
+                    className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-600 transition-opacity disabled:opacity-50"
                     title="Delete document"
                   >
                     <MdDelete size={16} />
@@ -201,20 +203,23 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
 
         {/* User Section */}
-        <div className="p-4 border-t border-gray-200 mt-auto">
-          <div className="flex items-center justify-between">
-            <div>
-              <FiUser size={22} />
+        <div className="p-5 border-t border-slate-200/70 mt-auto">
+          <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-700">
+              <FiUser size={18} />
             </div>
-            <div className="text-sm truncate px-2 text-gray-700">
-              Hello, {user?.username}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-slate-500">Signed in as</div>
+              <div className="text-sm font-semibold text-slate-700 truncate">
+                {user?.username}
+              </div>
             </div>
             <button
               onClick={logout}
-              className="hover:text-red-600 transition-colors"
+              className="rounded-full p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Logout"
             >
-              <FiLogOut size={22} />
+              <FiLogOut size={18} />
             </button>
           </div>
         </div>
@@ -232,7 +237,7 @@ function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Mobile toggle button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-2 left-2 z-30 md:hidden bg-white border border-gray-300 text-gray-700 p-2 rounded-lg shadow-lg hover:bg-gray-50"
+        className="fixed top-4 left-4 z-30 md:hidden bg-white/90 border border-slate-200 text-slate-700 p-2.5 rounded-xl shadow-lg hover:bg-white"
       >
         <HiOutlineMenuAlt2 size={15} />
       </button>

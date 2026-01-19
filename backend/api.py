@@ -1,11 +1,13 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List, Dict, Annotated
 import database
 import os
+import json
 import traceback
 from datetime import timedelta
 import fitz  # PyMuPDF for PDF text extraction
@@ -307,6 +309,79 @@ Answer (in Markdown):""",
     except Exception as e:
         print("Error during question:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ask/stream")
+async def ask_question_stream(
+    query: Question, current_user: User = Depends(get_current_user)
+):
+    """Stream answer tokens using server-sent events."""
+    # Do all validations and retrieval up front to allow proper HTTP errors
+    if not database.check_document_ownership(query.pdf_name, current_user.id):
+        raise HTTPException(status_code=403, detail="You don't have access to this PDF")
+
+    doc_id = database.get_document_id(query.pdf_name)
+    chunks_data = database.get_encrypted_chunks(doc_id)
+
+    if not chunks_data:
+        raise HTTPException(status_code=404, detail="No indexed content found")
+
+    query_embedding = embedding_service.embed_query(query.question)
+
+    public_key = database.get_user_fhe_key(current_user.id)
+    fhe_context = fhe_service.FHEContext(public_key)
+
+    encrypted_query = fhe_context.encrypt_vector(query_embedding)
+
+    encrypted_embeddings = [c["encrypted_embedding"] for c in chunks_data]
+    norms = [c["embedding_norm"] for c in chunks_data]
+
+    encrypted_scores = fhe_service.compute_encrypted_similarity(
+        encrypted_embeddings, encrypted_query, norms, fhe_context
+    )
+
+    scores = fhe_service.decrypt_scores(encrypted_scores, b"", fhe_context)
+
+    top_k_indices = fhe_service.get_top_k_indices(scores, k=4)
+    relevant_chunks = [chunks_data[i]["chunk_text"] for i in top_k_indices]
+
+    context = "\n\n".join(relevant_chunks)
+
+    prompt = f"""You are an assistant that answers questions in Markdown format. 
+Using the following retrieved information, answer the user question. 
+If you don't know the answer, say that you don't know.
+
+Question: {query.question}
+
+Context:
+{context}
+
+Answer (in Markdown):"""
+
+    def event_stream():
+        answer_parts: list[str] = []
+        try:
+            stream = genai_client.models.generate_content_stream(
+                model=CHAT_MODEL,
+                contents=prompt,
+            )
+
+            for chunk in stream:
+                text = getattr(chunk, "text", None) or ""
+                if not text:
+                    continue
+                answer_parts.append(text)
+                payload = json.dumps({"delta": text})
+                yield f"data: {payload}\n\n"
+
+            answer = "".join(answer_parts)
+            database.save_chat_history(query.pdf_name, query.question, answer)
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            error_msg = str(e)
+            yield f"data: [ERROR] {error_msg}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 # ============== Document Management ==============

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { LoginCredentials, RegisterCredentials, AuthToken, User } from './types';
 
-const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'http://localhost:8000';
 
 // Create axios instance with base configuration
 const api = axios.create({

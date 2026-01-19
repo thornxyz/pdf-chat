@@ -16,6 +16,7 @@ dependencies = [
     "pymupdf>=1.26.7",
     "python-dotenv>=1.2.1",
     "python-multipart>=0.0.21",
+    "setuptools>=80.9.0",
     "sqlalchemy>=2.0.45",
     "uvicorn>=0.40.0",
 ]

@@ -37,7 +37,7 @@ const Auth = () => {
         error instanceof Error
           ? error.message
           : (error as { response?: { data?: { detail?: string } } })?.response
-              ?.data?.detail || "An error occurred";
+            ?.data?.detail || "An error occurred";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -50,34 +50,31 @@ const Auth = () => {
     setCredentials({ username: "", password: "" });
   };
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <img
-              src="/vite.svg"
-              width={60}
-              alt="ChatPDF Logo"
-              className="drop-shadow-sm"
-            />
-            <div className="text-4xl font-bold text-gray-800">ChatPDF</div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600/10">
+              <img src="/vite.svg" width={28} alt="ChatPDF Logo" />
+            </div>
+            <div className="text-4xl font-bold text-slate-900">ChatPDF</div>
           </div>
-          <h2 className="text-2xl font-semibold text-gray-700">
+          <h2 className="text-2xl font-semibold text-slate-700">
             {isLogin ? "Welcome back!" : "Join ChatPDF"}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-slate-500">
             {isLogin
               ? "Sign in to continue chatting with your PDFs"
               : "Create an account to start chatting with PDFs"}
           </p>
         </div>{" "}
         <form
-          className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg border border-gray-100"
+          className="mt-8 space-y-6 bg-white/90 p-8 rounded-2xl shadow-xl border border-slate-100 backdrop-blur"
           onSubmit={handleSubmit}
         >
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 border border-red-200">
-              <div className="text-sm text-red-700 flex items-center gap-2">
+            <div className="rounded-xl bg-rose-50 p-4 border border-rose-200">
+              <div className="text-sm text-rose-700 flex items-center gap-2">
                 <svg
                   className="w-4 h-4"
                   fill="currentColor"
@@ -97,7 +94,7 @@ const Auth = () => {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-slate-700 mb-1"
               >
                 Username
               </label>
@@ -106,7 +103,7 @@ const Auth = () => {
                 name="username"
                 type="text"
                 required
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
+                className="appearance-none relative block w-full px-4 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
                 placeholder="Enter your username"
                 value={credentials.username}
                 onChange={handleInputChange}
@@ -115,7 +112,7 @@ const Auth = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-slate-700 mb-1"
               >
                 Password
               </label>
@@ -124,7 +121,7 @@ const Auth = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
+                className="appearance-none relative block w-full px-4 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors sm:text-sm"
                 placeholder="Enter your password"
                 value={credentials.password}
                 onChange={handleInputChange}
@@ -135,7 +132,7 @@ const Auth = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
@@ -149,7 +146,7 @@ const Auth = () => {
               )}
             </button>
           </div>
-          <div className="text-center pt-4 border-t border-gray-200">
+          <div className="text-center pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={toggleMode}
