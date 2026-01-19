@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 from contextlib import contextmanager
 import os
 from models import Base, Document, Chat, User, EncryptedChunk
@@ -33,22 +33,24 @@ def initialize_database():
 
 # ============== User FHE Key Management ==============
 
+
 def update_user_fhe_key(user_id: int, public_key: bytes) -> None:
     """Store user's FHE public key"""
     with get_db_session() as session:
-        user = session.query(User).filter(User.id == user_id).first()
-        if user:
-            user.fhe_public_key = public_key
+        session.query(User).filter(User.id == user_id).update(
+            {User.fhe_public_key: public_key}
+        )
 
 
 def get_user_fhe_key(user_id: int) -> Optional[bytes]:
     """Retrieve user's FHE public key"""
     with get_db_session() as session:
-        user = session.query(User).filter(User.id == user_id).first()
-        return user.fhe_public_key if user else None
+        result = session.query(User.fhe_public_key).filter(User.id == user_id).scalar()
+        return result
 
 
 # ============== Document Management ==============
+
 
 def insert_document(filename: str, user_id: int) -> int:
     """Insert a new document record and return its ID"""
@@ -56,7 +58,7 @@ def insert_document(filename: str, user_id: int) -> int:
         document = Document(filename=filename, user_id=user_id)
         session.add(document)
         session.flush()  # Get the ID
-        return document.id
+        return cast(int, document.id)
 
 
 def get_document_id(filename: str) -> int:
@@ -65,14 +67,18 @@ def get_document_id(filename: str) -> int:
         document = session.query(Document).filter(Document.filename == filename).first()
         if not document:
             raise ValueError(f"Document {filename} not found in the database")
-        return document.id
+        document_id: int = cast(int, document.id)
+        return document_id
 
 
 def get_all_documents(user_id: int) -> List[str]:
     """Get all document filenames for a specific user"""
     with get_db_session() as session:
-        documents = session.query(Document).filter(Document.user_id == user_id).all()
-        return [doc.filename for doc in documents]
+        documents = (
+            session.query(Document.filename).filter(Document.user_id == user_id).all()
+        )
+        filenames = [doc[0] for doc in documents]
+    return filenames
 
 
 def delete_document(filename: str, user_id: int) -> None:
@@ -99,6 +105,7 @@ def check_document_ownership(filename: str, user_id: int) -> bool:
 
 
 # ============== Encrypted Chunks ==============
+
 
 def insert_encrypted_chunk(
     document_id: int,
@@ -142,6 +149,7 @@ def get_encrypted_chunks(document_id: int) -> List[Dict]:
 
 # ============== Chat History ==============
 
+
 def save_chat_history(pdf_name: str, question: str, answer: str) -> None:
     """Save a chat interaction to the database"""
     with get_db_session() as session:
@@ -176,4 +184,3 @@ def load_chat_history(pdf_name: str) -> List[Dict]:
 
 # Initialize database when module is imported
 initialize_database()
-

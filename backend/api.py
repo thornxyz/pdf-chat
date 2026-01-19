@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from typing import List, Dict, Annotated, Optional
+from typing import List, Dict, Annotated
 import database
 import os
 import traceback
@@ -22,7 +22,7 @@ from auth import (
 import embedding_service
 import fhe_service
 from google import genai
-from google.genai import types
+from backend.llm_config import CHAT_MODEL
 
 app = FastAPI(title="PDF-Chat API (FHE-RAG)")
 
@@ -53,6 +53,7 @@ class FHEKeyUpload(BaseModel):
 
 
 # ============== Authentication Routes ==============
+
 
 @app.post("/auth/register", response_model=User)
 async def register(user_create: UserCreate):
@@ -92,10 +93,12 @@ async def read_users_me(
 
 # ============== FHE Key Management ==============
 
+
 @app.post("/fhe/generate-keys")
 async def generate_fhe_keys():
     """Generate FHE keypair (for demo - in production, do this client-side)"""
     import base64
+
     public_key, secret_key = fhe_service.FHEContext.generate_keys()
     return {
         "public_key": base64.b64encode(public_key).decode(),
@@ -111,6 +114,7 @@ async def upload_fhe_public_key(
 ):
     """Store user's FHE public key for encrypting their embeddings"""
     import base64
+
     try:
         public_key_bytes = base64.b64decode(key_data.public_key)
         database.update_user_fhe_key(current_user.id, public_key_bytes)
@@ -121,33 +125,34 @@ async def upload_fhe_public_key(
 
 # ============== Document Upload ==============
 
+
 def extract_text_from_pdf(file_path: str) -> List[str]:
     """Extract text from PDF and split into chunks"""
     doc = fitz.open(file_path)
     chunks = []
-    
+
     for page in doc:
-        text = page.get_text()
+        text = str(page.get_text())
         if text.strip():
             # Split into ~1000 char chunks with overlap
             words = text.split()
             chunk_words = []
             current_len = 0
-            
+
             for word in words:
                 chunk_words.append(word)
                 current_len += len(word) + 1
-                
+
                 if current_len >= 1000:
                     chunks.append(" ".join(chunk_words))
                     # Keep last 100 chars for overlap
                     overlap_start = max(0, len(chunk_words) - 20)
                     chunk_words = chunk_words[overlap_start:]
                     current_len = sum(len(w) + 1 for w in chunk_words)
-            
+
             if chunk_words:
                 chunks.append(" ".join(chunk_words))
-    
+
     doc.close()
     return chunks
 
@@ -157,9 +162,10 @@ async def upload_pdf(
     file: UploadFile = File(...), current_user: User = Depends(get_current_user)
 ):
     """Upload PDF, extract text, generate embeddings, encrypt, and store"""
-    if not file.filename.endswith(".pdf"):
+    if not file.filename or not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="File must be a PDF")
 
+    file_path = None
     try:
         # Save PDF file
         safe_filename = f"{current_user.id}_{file.filename}"
@@ -189,10 +195,10 @@ async def upload_pdf(
         for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
             # Quantize and compute norm for similarity search
             _, norm = fhe_service.quantize_embedding(embedding)
-            
+
             # Encrypt the embedding
             encrypted_embedding = fhe_context.encrypt_vector(embedding)
-            
+
             # Store in database
             database.insert_encrypted_chunk(
                 document_id=doc_id,
@@ -214,17 +220,20 @@ async def upload_pdf(
         raise
     except Exception as e:
         print("Error during PDF upload:", traceback.format_exc())
-        if os.path.exists(file_path):
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred while handling the PDF: {str(e)}",
         )
     finally:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
         await file.close()
 
 
 # ============== Question Answering with FHE ==============
+
 
 @app.post("/ask/")
 async def ask_question(query: Question, current_user: User = Depends(get_current_user)):
@@ -239,7 +248,7 @@ async def ask_question(query: Question, current_user: User = Depends(get_current
         # Get encrypted chunks for this document
         doc_id = database.get_document_id(query.pdf_name)
         chunks_data = database.get_encrypted_chunks(doc_id)
-        
+
         if not chunks_data:
             raise HTTPException(status_code=404, detail="No indexed content found")
 
@@ -256,7 +265,7 @@ async def ask_question(query: Question, current_user: User = Depends(get_current
         # Compute encrypted similarity scores
         encrypted_embeddings = [c["encrypted_embedding"] for c in chunks_data]
         norms = [c["embedding_norm"] for c in chunks_data]
-        
+
         encrypted_scores = fhe_service.compute_encrypted_similarity(
             encrypted_embeddings, encrypted_query, norms, fhe_context
         )
@@ -271,9 +280,9 @@ async def ask_question(query: Question, current_user: User = Depends(get_current
 
         # Build context and generate answer using Gemini
         context = "\n\n".join(relevant_chunks)
-        
+
         response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=CHAT_MODEL,
             contents=f"""You are an assistant that answers questions in Markdown format. 
 Using the following retrieved information, answer the user question. 
 If you don't know the answer, say that you don't know.
@@ -286,7 +295,7 @@ Context:
 Answer (in Markdown):""",
         )
 
-        answer = response.text
+        answer = response.text or ""
 
         # Save to chat history
         database.save_chat_history(query.pdf_name, query.question, answer)
@@ -301,6 +310,7 @@ Answer (in Markdown):""",
 
 
 # ============== Document Management ==============
+
 
 @app.get("/documents/")
 async def list_documents(
@@ -318,12 +328,11 @@ async def get_chat_history(
     pdf_name: str, current_user: User = Depends(get_current_user)
 ) -> List[Dict]:
     import urllib.parse
+
     decoded_pdf_name = urllib.parse.unquote(pdf_name)
 
     if not database.check_document_ownership(decoded_pdf_name, current_user.id):
-        raise HTTPException(
-            status_code=403, detail="You don't have access to this PDF"
-        )
+        raise HTTPException(status_code=403, detail="You don't have access to this PDF")
 
     return database.load_chat_history(decoded_pdf_name)
 
@@ -333,12 +342,11 @@ async def delete_document(
     pdf_name: str, current_user: User = Depends(get_current_user)
 ):
     import urllib.parse
+
     decoded_pdf_name = urllib.parse.unquote(pdf_name)
 
     if not database.check_document_ownership(decoded_pdf_name, current_user.id):
-        raise HTTPException(
-            status_code=403, detail="You don't have access to this PDF"
-        )
+        raise HTTPException(status_code=403, detail="You don't have access to this PDF")
 
     try:
         database.delete_document(decoded_pdf_name, current_user.id)
@@ -353,8 +361,3 @@ async def delete_document(
     return JSONResponse(
         content={"message": f"Document {decoded_pdf_name} deleted successfully"}
     )
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

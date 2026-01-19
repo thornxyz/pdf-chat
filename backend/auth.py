@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Optional, cast
 import os
 from dotenv import load_dotenv
 import jwt
@@ -15,8 +15,8 @@ load_dotenv()
 
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"])
@@ -66,9 +66,9 @@ def get_user_by_username(username: str) -> Optional[UserInDB]:
         user = session.query(UserModel).filter(UserModel.username == username).first()
         if user:
             return UserInDB(
-                id=user.id,
-                username=user.username,
-                hashed_password=user.hashed_password,
+                id=cast(int, user.id),
+                username=cast(str, user.username),
+                hashed_password=cast(str, user.hashed_password),
             )
         return None
 
@@ -90,11 +90,11 @@ def create_user(user_create: UserCreate) -> User:
             hashed_password=hashed_password,
         )
         session.add(db_user)
-        session.flush()  # To get the ID
+        session.commit()  # Commit to get the ID
 
         return User(
-            id=db_user.id,
-            username=db_user.username,
+            id=cast(int, db_user.id),
+            username=cast(str, db_user.username),
         )
 
 
@@ -130,18 +130,20 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        username: str = cast(str, payload.get("sub"))
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
     except InvalidTokenError:
         raise credentials_exception
 
+    if token_data.username is None:
+        raise credentials_exception
     user = get_user_by_username(username=token_data.username)
     if user is None:
         raise credentials_exception
 
     return User(
-        id=user.id,
+        id=cast(int, user.id),
         username=user.username,
     )
